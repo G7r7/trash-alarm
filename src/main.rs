@@ -1,25 +1,31 @@
-//! # Pico PWM Blink Example
+//! # Pico Blinky Example
 //!
-//! Fades the LED on a Pico board using the PWM peripheral.
+//! Blinks the LED on a Pico board.
 //!
-//! This will fade in/out the LED attached to GP25, which is the pin the Pico
-//! uses for the on-board LED.
+//! This will blink an LED attached to GP25, which is the pin the Pico uses for
+//! the on-board LED.
 //!
 //! See the `Cargo.toml` file for Copyright and license details.
 
 #![no_std]
 #![no_main]
 
+use cortex_m::delay::Delay;
+use embedded_hal::digital::v2::InputPin;
 // The macro for our start-up function
 use rp_pico::entry;
 
 // GPIO traits
-use embedded_hal::PwmPin;
+use embedded_hal::digital::v2::OutputPin;
 
 // Ensure we halt the program on panic (if we don't mention this crate it won't
 // be linked)
 use panic_halt as _;
 
+use rp_pico::hal::gpio::Output;
+use rp_pico::hal::gpio::Pin;
+use rp_pico::hal::gpio::PinId;
+use rp_pico::hal::gpio::PushPull;
 // Pull in any important traits
 use rp_pico::hal::prelude::*;
 
@@ -31,18 +37,21 @@ use rp_pico::hal::pac;
 // higher-level drivers.
 use rp_pico::hal;
 
-// The minimum PWM value (i.e. LED brightness) we want
-const LOW: u16 = 0;
-
-// The maximum PWM value (i.e. LED brightness) we want
-const HIGH: u16 = 25000;
-
-/// Entry point to our bare-metal application.
+///&mut &mut  Entry point to our bare-metal application.
 ///
 /// The `#[entry]` macro ensures the Cortex-M start-up code calls this function
 /// as soon as all global variables are initialised.
 ///
-/// The function configures the RP2040 peripherals, then fades the LED in an
+/// The function configures the RP2040 peripherals, then blinks the LED in an
+
+fn blink_led<T: PinId>(led_pin: &mut Pin<T, Output<PushPull>>, ms: u32, delay: &mut Delay) {
+    led_pin.set_high().unwrap();
+    led_pin.set_high().unwrap();
+    delay.delay_ms(ms);
+    led_pin.set_low().unwrap();
+    delay.delay_ms(ms);
+}
+
 /// infinite loop.
 #[entry]
 fn main() -> ! {
@@ -68,6 +77,10 @@ fn main() -> ! {
     .ok()
     .unwrap();
 
+    // The delay object lets us wait for specified amounts of time (in
+    // milliseconds)
+    let mut delay = cortex_m::delay::Delay::new(core.SYST, clocks.system_clock.freq().to_Hz());
+
     // The single-cycle I/O block controls our GPIO pins
     let sio = hal::Sio::new(pac.SIO);
 
@@ -79,38 +92,23 @@ fn main() -> ! {
         &mut pac.RESETS,
     );
 
-    // The delay object lets us wait for specified amounts of time (in
-    // milliseconds)
-    let mut delay = cortex_m::delay::Delay::new(core.SYST, clocks.system_clock.freq().to_Hz());
+    // Set the LED to be an output
+    let mut led_pin = pins.led.into_push_pull_output();
+    let _red_led_pin = pins.gpio1.into_push_pull_output();
 
-    // Init PWMs
-    let mut pwm_slices = hal::pwm::Slices::new(pac.PWM, &mut pac.RESETS);
+    // Set the red button to be an input
+    let button_pin = pins.gpio28.into_pull_up_input();
 
-    // Configure PWM4
-    let pwm = &mut pwm_slices.pwm4;
-    pwm.set_ph_correct();
-    pwm.enable();
+    // Flag to store the activation alarm state
+    let _flag = false;
 
-    // Output channel B on PWM4 to the LED pin
-    let channel = &mut pwm.channel_b;
-    channel.output_to(pins.led);
+    // Blink speed
+    let blink_time_ms = 20;
 
-    // Infinite loop, fading LED up and down
+    // Blink the LED at 1 Hz
     loop {
-        // Ramp brightness up
-        for i in (LOW..=HIGH).skip(100) {
-            delay.delay_us(8);
-            channel.set_duty(i);
+        if button_pin.is_low().unwrap() {
+            blink_led(&mut led_pin, blink_time_ms, &mut delay);
         }
-
-        // Ramp brightness down
-        for i in (LOW..=HIGH).rev().skip(100) {
-            delay.delay_us(8);
-            channel.set_duty(i);
-        }
-
-        delay.delay_ms(500);
     }
 }
-
-// End of file

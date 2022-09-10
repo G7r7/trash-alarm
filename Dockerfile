@@ -14,6 +14,8 @@ RUN apt install -y pkg-config libudev-dev
 RUN rustup self update
 RUN rustup update stable
 RUN rustup target add thumbv6m-none-eabi
+RUN rustup component add rustfmt
+RUN cargo install flip-link
 # Useful to creating UF2 images for the RP2040 USB Bootloader
 RUN cargo install elf2uf2-rs --locked
 # Useful for flashing over the SWD pins using a supported JTAG probe

@@ -6,5 +6,6 @@ services:
     container_name: rust-dev-env
     volumes:
       - ./:/home/trash-alarm
+      - /dev/sda1:/dev/sda1
     working_dir: /home/trash-alarm
     command: tail -f /dev/null
