@@ -1,0 +1,10 @@
+version: '3.0'
+
+services:
+  rust-dev-env:
+    build: .
+    container_name: rust-dev-env
+    volumes:
+      - ./:/home/trash-alarm
+    working_dir: /home/trash-alarm
+    command: tail -f /dev/null
