@@ -1,11 +1,12 @@
 version: '3.0'
 
 services:
-  rust-dev-env:
+  trash-alarm-dev-env:
     build: .
-    container_name: rust-dev-env
+    container_name: trash-alarm-dev-env
     volumes:
       - ./:/home/trash-alarm
-      - /dev/sda1:/dev/sda1
+      - /dev:/dev
+    privileged: true
     working_dir: /home/trash-alarm
     command: tail -f /dev/null

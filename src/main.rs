@@ -36,6 +36,8 @@ use rp_pico::hal::pac;
 // A shorter alias for the Hardware Abstraction Layer, which provides
 // higher-level drivers.
 use rp_pico::hal;
+use rp_pico::hal::rtc::DateTime;
+use rp_pico::hal::rtc::RealTimeClock;
 
 ///&mut &mut  Entry point to our bare-metal application.
 ///
@@ -77,6 +79,20 @@ fn main() -> ! {
     .ok()
     .unwrap();
 
+    // Real Time Clock
+    let date_time = DateTime {
+        day: 10,
+        month: 09,
+        year: 2022,
+        day_of_week: hal::rtc::DayOfWeek::Sunday,
+        hour: 23,
+        minute: 55,
+        second: 0,
+    };
+
+    let real_time_clock =
+        RealTimeClock::new(pac.RTC, clocks.rtc_clock, &mut pac.RESETS, date_time).unwrap();
+
     // The delay object lets us wait for specified amounts of time (in
     // milliseconds)
     let mut delay = cortex_m::delay::Delay::new(core.SYST, clocks.system_clock.freq().to_Hz());
@@ -100,7 +116,7 @@ fn main() -> ! {
     let button_pin = pins.gpio28.into_pull_up_input();
 
     // Flag to store the activation alarm state
-    let _flag = false;
+    let mut alarm_state = true;
 
     // Blink speed
     let blink_time_ms = 20;
@@ -108,6 +124,10 @@ fn main() -> ! {
     // Blink the LED at 1 Hz
     loop {
         if button_pin.is_low().unwrap() {
+            alarm_state = false;
+        }
+
+        if alarm_state {
             blink_led(&mut led_pin, blink_time_ms, &mut delay);
         }
     }
