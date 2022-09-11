@@ -50,6 +50,7 @@ const LCD_5x8DOTS: u8 = 0x00;
 
 use cortex_m::{delay::Delay, prelude::_embedded_hal_blocking_i2c_Write};
 use embedded_hal::digital::v2::OutputPin;
+use lcd_1602_i2c::LcdDisplay;
 // Ensure we halt the program on panic (if we don't mention this crate it won't
 // be linked)
 use panic_halt as _;
@@ -124,7 +125,7 @@ fn main() -> ! {
     // Create the I²C driver, using the two pre-configured pins. This will fail
     // at compile time if the pins are in the wrong mode, or if this I²C
     // peripheral isn't available on these pins!
-    let mut i2c = rp_pico::hal::I2C::i2c0(
+    let i2c = rp_pico::hal::I2C::i2c0(
         pac.I2C0,
         sda_pin,
         scl_pin,
@@ -133,86 +134,7 @@ fn main() -> ! {
         &clocks.peripheral_clock,
     );
 
-    // let mut lcd = lcd_1602_i2c::Lcd::new(i2c, LCD_ADDRESS, RGB_ADDRESS, &mut delay).unwrap();
-    // lcd.set_rgb(255, 255, 255).unwrap();
-    // lcd.write_str("Hello world!").unwrap();
-
-    pub struct RGB1602 {
-        pub col: u8,
-        pub row: u8,
-        pub show_function: u8,
-        pub show_control: u8,
-        pub show_mode: u8,
-        pub current_line: u8,
-        pub num_lines: u8,
-    }
-
-    let mut rgb1602 = RGB1602 {
-        col: 16,
-        row: 2,
-        show_function: LCD_4BITMODE | LCD_1LINE | LCD_5x8DOTS,
-        show_control: LCD_DISPLAYON | LCD_CURSOROFF | LCD_BLINKOFF, // Turn the display on with no cursor or blinking default
-        show_mode: LCD_ENTRYLEFT | LCD_ENTRYSHIFTDECREMENT, // Initialize to default text direction (for romance languages)
-        current_line: 0,
-        num_lines: 16,
-    };
-
-    // begin
-    if rgb1602.row > 1 {
-        rgb1602.show_function |= LCD_2LINE;
-    }
-    delay.delay_ms(50);
-    //  Send function set command sequence
-    i2c.write(
-        LCD_ADDRESS,
-        &[0x80, LCD_FUNCTIONSET | rgb1602.show_function],
-    )
-    .unwrap();
-    delay.delay_ms(50);
-    // second try
-    i2c.write(
-        LCD_ADDRESS,
-        &[0x80, LCD_FUNCTIONSET | rgb1602.show_function],
-    )
-    .unwrap();
-    delay.delay_ms(50);
-    // third go
-    i2c.write(
-        LCD_ADDRESS,
-        &[0x80, LCD_FUNCTIONSET | rgb1602.show_function],
-    )
-    .unwrap();
-    // finally, set # lines, font size, etc.
-    i2c.write(
-        LCD_ADDRESS,
-        &[0x80, LCD_FUNCTIONSET | rgb1602.show_function],
-    )
-    .unwrap();
-    // // turn the display on with no cursor or blinking default
-    i2c.write(
-        LCD_ADDRESS,
-        &[0x80, LCD_DISPLAYCONTROL | rgb1602.show_control],
-    )
-    .unwrap();
-    // clear it off
-    i2c.write(LCD_ADDRESS, &[0x80, LCD_CLEARDISPLAY]).unwrap();
-    delay.delay_ms(2);
-    // set the entry mode
-    i2c.write(LCD_ADDRESS, &[0x80, LCD_ENTRYMODESET | rgb1602.show_mode])
-        .unwrap();
-    // backlight init
-    i2c.write(RGB_ADDRESS, &[REG_MODE1, 0]).unwrap();
-    // set LEDs controllable by both PWM and GRPPWM registers
-    i2c.write(RGB_ADDRESS, &[REG_OUTPUT, 0xFF]).unwrap();
-    // set MODE2 values
-    // 0010 0000 -> 0x20  (DMBLNK to 1, ie blinky mode)
-    i2c.write(RGB_ADDRESS, &[REG_MODE2, 0x20]).unwrap();
-    // WHITE DISPLAY
-    i2c.write(RGB_ADDRESS, &[REG_BLUE, 0]).unwrap();
-    i2c.write(RGB_ADDRESS, &[REG_GREEN, 0]).unwrap();
-    i2c.write(RGB_ADDRESS, &[REG_RED, 255]).unwrap();
-
-    // LEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEED
+    let mut lcd = lcd_1602_i2c::Lcd::new(i2c, LCD_ADDRESS, RGB_ADDRESS, &mut delay).unwrap();
 
     // Blink the LED at 1 Hz
     loop {
@@ -222,5 +144,15 @@ fn main() -> ! {
         led.set_low().unwrap();
         led2.set_low().unwrap();
         delay.delay_ms(500);
+
+        lcd.set_rgb(255, 255, 255).unwrap();
+        lcd.write_str("Hello world!").unwrap();
+        delay.delay_ms(500);
+        lcd.clear(&mut delay).unwrap();
+        lcd.set_rgb(14, 150, 100).unwrap();
+        lcd.write_str("Goodbye world!").unwrap();
+        delay.delay_ms(500);
+        lcd.clear(&mut delay).unwrap();
+        lcd.set_rgb(0, 0, 0).unwrap();
     }
 }
