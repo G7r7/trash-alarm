@@ -5,61 +5,21 @@
 const LCD_ADDRESS: u8 = 0x7c >> 1;
 const RGB_ADDRESS: u8 = 0xc0 >> 1;
 
-// Colors
-const REG_RED: u8 = 0x04;
-const REG_GREEN: u8 = 0x03;
-const REG_BLUE: u8 = 0x02;
-const REG_MODE1: u8 = 0x00;
-const REG_MODE2: u8 = 0x01;
-const REG_OUTPUT: u8 = 0x08;
-const LCD_CLEARDISPLAY: u8 = 0x01;
-const LCD_RETURNHOME: u8 = 0x02;
-const LCD_ENTRYMODESET: u8 = 0x04;
-const LCD_DISPLAYCONTROL: u8 = 0x08;
-const LCD_CURSORSHIFT: u8 = 0x10;
-const LCD_FUNCTIONSET: u8 = 0x20;
-const LCD_SETCGRAMADDR: u8 = 0x40;
-const LCD_SETDDRAMADDR: u8 = 0x80;
+use arrayvec::ArrayString;
+use core::{fmt::Write, u8};
 
-// Flags for display entry mode
-const LCD_ENTRYRIGHT: u8 = 0x00;
-const LCD_ENTRYLEFT: u8 = 0x02;
-const LCD_ENTRYSHIFTINCREMENT: u8 = 0x01;
-const LCD_ENTRYSHIFTDECREMENT: u8 = 0x00;
-
-// Flags for display on/off control
-const LCD_DISPLAYON: u8 = 0x04;
-const LCD_DISPLAYOFF: u8 = 0x00;
-const LCD_CURSORON: u8 = 0x02;
-const LCD_CURSOROFF: u8 = 0x00;
-const LCD_BLINKON: u8 = 0x01;
-const LCD_BLINKOFF: u8 = 0x00;
-
-// Flags for display/cursor shift
-const LCD_DISPLAYMOVE: u8 = 0x08;
-const LCD_CURSORMOVE: u8 = 0x00;
-const LCD_MOVERIGHT: u8 = 0x04;
-const LCD_MOVELEFT: u8 = 0x00;
-
-// Flags for function set
-const LCD_8BITMODE: u8 = 0x10;
-const LCD_4BITMODE: u8 = 0x00;
-const LCD_2LINE: u8 = 0x08;
-const LCD_1LINE: u8 = 0x00;
-const LCD_5x8DOTS: u8 = 0x00;
-
-use cortex_m::{delay::Delay, prelude::_embedded_hal_blocking_i2c_Write};
+use cortex_m::delay::Delay;
 use embedded_hal::digital::v2::OutputPin;
-use lcd_1602_i2c::LcdDisplay;
 // Ensure we halt the program on panic (if we don't mention this crate it won't
 // be linked)
 use panic_halt as _;
 
 // Time handling traits:
-use fugit::{ExtU32, RateExtU32};
-use rp_pico::{
-    hal::gpio::{Output, Pin, PinId, PushPull},
-    pac::I2C0,
+use fugit::RateExtU32;
+use rp_pico::hal::{
+    self,
+    gpio::{Output, Pin, PinId, PushPull},
+    rtc::{DateTime, RealTimeClock},
 };
 
 fn blink_led<T: PinId>(led_pin: &mut Pin<T, Output<PushPull>>, ms: u32, delay: &mut Delay) {
@@ -112,11 +72,7 @@ fn main() -> ! {
         &mut pac.RESETS,
     );
 
-    // Leds
-    let mut led = pins.led.into_push_pull_output();
-    let mut led2 = pins.gpio5.into_push_pull_output();
-
-    // SCTREEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEN
+    // Screen
 
     // Configure two pins as being I²C, not GPIO
     let sda_pin = pins.gpio0.into_mode::<rp_pico::hal::gpio::FunctionI2C>();
@@ -135,24 +91,56 @@ fn main() -> ! {
     );
 
     let mut lcd = lcd_1602_i2c::Lcd::new(i2c, LCD_ADDRESS, RGB_ADDRESS, &mut delay).unwrap();
+    lcd.clear(&mut delay).unwrap();
+    lcd.set_rgb(128, 128, 128).unwrap();
+
+    // Real Time Clock
+    let date_time = DateTime {
+        day: 10,
+        month: 09,
+        year: 2022,
+        day_of_week: hal::rtc::DayOfWeek::Sunday,
+        hour: 23,
+        minute: 55,
+        second: 0,
+    };
+
+    let real_time_clock =
+        RealTimeClock::new(pac.RTC, clocks.rtc_clock, &mut pac.RESETS, date_time).unwrap();
 
     // Blink the LED at 1 Hz
     loop {
-        led.set_high().unwrap();
-        led2.set_high().unwrap();
-        delay.delay_ms(500);
-        led.set_low().unwrap();
-        led2.set_low().unwrap();
-        delay.delay_ms(500);
+        let time = real_time_clock.now().unwrap();
 
-        lcd.set_rgb(255, 255, 255).unwrap();
-        lcd.write_str("Hello world!").unwrap();
-        delay.delay_ms(500);
-        lcd.clear(&mut delay).unwrap();
-        lcd.set_rgb(14, 150, 100).unwrap();
-        lcd.write_str("Goodbye world!").unwrap();
-        delay.delay_ms(500);
-        lcd.clear(&mut delay).unwrap();
-        lcd.set_rgb(0, 0, 0).unwrap();
+        let date_string = datetime_to_date_array_string(&time);
+        let time_string = datetime_to_time_array_string(&time);
+
+        lcd.set_cursor_position(0, 0).unwrap();
+        lcd.write_str(&date_string.as_str()).unwrap();
+        lcd.set_cursor_position(0, 1).unwrap();
+        lcd.write_str(time_string.as_str()).unwrap();
+        delay.delay_ms(1000);
     }
+}
+
+fn datetime_to_date_array_string(time: &DateTime) -> ArrayString<10> {
+    let mut time_string = ArrayString::<10>::new();
+    write!(
+        &mut time_string,
+        "{}/{}/{}",
+        time.year, time.month, time.day
+    )
+    .unwrap();
+    return time_string;
+}
+
+fn datetime_to_time_array_string(time: &DateTime) -> ArrayString<8> {
+    let mut time_string = ArrayString::<8>::new();
+    write!(
+        &mut time_string,
+        "{}:{}:{}",
+        time.hour, time.minute, time.second
+    )
+    .unwrap();
+    return time_string;
 }
