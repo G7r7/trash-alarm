@@ -1,15 +1,16 @@
 #![no_std]
 #![no_main]
 
+mod datetime;
+mod led;
+
 // Device I2C Addresses
 const LCD_ADDRESS: u8 = 0x7c >> 1;
 const RGB_ADDRESS: u8 = 0xc0 >> 1;
 
-use arrayvec::ArrayString;
-use core::{fmt::Write, u8};
+use core::u8;
 
-use cortex_m::delay::Delay;
-use embedded_hal::digital::v2::OutputPin;
+use datetime::FormatToArrayString;
 // Ensure we halt the program on panic (if we don't mention this crate it won't
 // be linked)
 use panic_halt as _;
@@ -18,16 +19,8 @@ use panic_halt as _;
 use fugit::RateExtU32;
 use rp_pico::hal::{
     self,
-    gpio::{Output, Pin, PinId, PushPull},
     rtc::{DateTime, RealTimeClock},
 };
-
-fn blink_led<T: PinId>(led_pin: &mut Pin<T, Output<PushPull>>, ms: u32, delay: &mut Delay) {
-    led_pin.set_high().unwrap();
-    delay.delay_ms(ms);
-    led_pin.set_low().unwrap();
-    delay.delay_ms(ms);
-}
 
 /// The `#[entry]` macro ensures the Cortex-M start-up code calls this function
 /// as soon as all global variables are initialised.
@@ -112,35 +105,10 @@ fn main() -> ! {
     loop {
         let time = real_time_clock.now().unwrap();
 
-        let date_string = datetime_to_date_array_string(&time);
-        let time_string = datetime_to_time_array_string(&time);
-
         lcd.set_cursor_position(0, 0).unwrap();
-        lcd.write_str(&date_string.as_str()).unwrap();
+        lcd.write_str(time.to_date_arraystring().as_str()).unwrap();
         lcd.set_cursor_position(0, 1).unwrap();
-        lcd.write_str(time_string.as_str()).unwrap();
+        lcd.write_str(time.to_time_arraystring().as_str()).unwrap();
         delay.delay_ms(1000);
     }
-}
-
-fn datetime_to_date_array_string(time: &DateTime) -> ArrayString<10> {
-    let mut time_string = ArrayString::<10>::new();
-    write!(
-        &mut time_string,
-        "{:0>4}/{:0>2}/{:0>2}",
-        time.year, time.month, time.day
-    )
-    .unwrap();
-    return time_string;
-}
-
-fn datetime_to_time_array_string(time: &DateTime) -> ArrayString<8> {
-    let mut time_string = ArrayString::<8>::new();
-    write!(
-        &mut time_string,
-        "{:0>2}:{:0>2}:{:0>2}",
-        time.hour, time.minute, time.second
-    )
-    .unwrap();
-    return time_string;
 }
