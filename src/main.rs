@@ -127,7 +127,7 @@ fn datetime_to_date_array_string(time: &DateTime) -> ArrayString<10> {
     let mut time_string = ArrayString::<10>::new();
     write!(
         &mut time_string,
-        "{}/{}/{}",
+        "{:0>4}/{:0>2}/{:0>2}",
         time.year, time.month, time.day
     )
     .unwrap();
@@ -138,7 +138,7 @@ fn datetime_to_time_array_string(time: &DateTime) -> ArrayString<8> {
     let mut time_string = ArrayString::<8>::new();
     write!(
         &mut time_string,
-        "{}:{}:{}",
+        "{:0>2}:{:0>2}:{:0>2}",
         time.hour, time.minute, time.second
     )
     .unwrap();
