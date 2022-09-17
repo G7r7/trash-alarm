@@ -10,17 +10,14 @@ const RGB_ADDRESS: u8 = 0xc0 >> 1;
 
 use core::u8;
 
-use datetime::FormatToArrayString;
+use datetime::{FormatToArrayString, FromScreenAndButtons};
 // Ensure we halt the program on panic (if we don't mention this crate it won't
 // be linked)
 use panic_halt as _;
 
 // Time handling traits:
 use fugit::RateExtU32;
-use rp_pico::hal::{
-    self,
-    rtc::{DateTime, RealTimeClock},
-};
+use rp_pico::hal::rtc::{DateTime, RealTimeClock};
 
 /// The `#[entry]` macro ensures the Cortex-M start-up code calls this function
 /// as soon as all global variables are initialised.
@@ -87,17 +84,17 @@ fn main() -> ! {
     lcd.clear(&mut delay).unwrap();
     lcd.set_rgb(128, 128, 128).unwrap();
 
-    // Real Time Clock
-    let date_time = DateTime {
-        day: 10,
-        month: 09,
-        year: 2022,
-        day_of_week: hal::rtc::DayOfWeek::Sunday,
-        hour: 23,
-        minute: 55,
-        second: 0,
-    };
+    // Ask for datetime
+    let mut increment_button = pins.gpio16.into_pull_up_input();
+    let mut validate_button = pins.gpio17.into_pull_up_input();
+    let date_time = DateTime::from_screen_and_buttons(
+        &mut lcd,
+        &mut delay,
+        &mut increment_button,
+        &mut validate_button,
+    );
 
+    // Real Time Clock
     let real_time_clock =
         RealTimeClock::new(pac.RTC, clocks.rtc_clock, &mut pac.RESETS, date_time).unwrap();
 
