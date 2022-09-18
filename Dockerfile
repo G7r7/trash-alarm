@@ -4,6 +4,7 @@ FROM rust:1.63.0-slim-bullseye
 RUN apt update \
     && apt-get -y install git \
     && apt-get -y install openssh-client \
+    && apt-get -y install openssh-server \
     && git config --global core.autocrlf true \
     && git config --global --add safe.directory /app
 
@@ -21,9 +22,15 @@ RUN cargo install elf2uf2-rs --locked
 # Useful for flashing over the SWD pins using a supported JTAG probe
 RUN cargo install probe-run
 
-# Dev env user
-# RUN addgroup --gid 1000 devuser
-# RUN adduser --disabled-password --gecos "" --uid 1000 --gid 1000 devuser
-# ENV HOME /home/devuser
-# USER devuser
+# SSH server
+EXPOSE 22
+RUN mkdir /var/run/sshd
+RUN echo 'root:root' | chpasswd
+RUN sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config
 
+# Dev env user
+RUN addgroup --gid 1000 devuser
+RUN adduser --gecos "" --uid 1000 --gid 1000 devuser
+RUN echo 'devuser:devuser' | chpasswd
+ENV HOME /home/devuser
+USER devuser

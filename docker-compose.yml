@@ -10,3 +10,6 @@ services:
     privileged: true
     working_dir: /home/trash-alarm
     command: tail -f /dev/null
+    ports: 
+      - 2222:22
+
