@@ -3,6 +3,7 @@ FROM rust:1.63.0-slim-bullseye
 # Dev tools
 RUN apt update \
     && apt-get -y install git \
+    && apt-get -y install wget \
     && apt-get -y install openssh-client \
     && apt-get -y install openssh-server \
     && git config --global core.autocrlf true \
