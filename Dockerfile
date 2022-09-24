@@ -23,7 +23,7 @@ RUN cargo install elf2uf2-rs --locked
 # Useful for flashing over the SWD pins using a supported JTAG probe
 RUN cargo install probe-run
 
-# SSH server for remote coding
+# SSH server for remote coding with IntelliJ
 EXPOSE 22
 RUN mkdir /var/run/sshd
 RUN echo 'PermitRootLogin yes' >> /etc/ssh/sshd_config
@@ -37,11 +37,21 @@ RUN apt-get install sudo
 RUN apt-get install -y supervisor
 COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
+# Change root password
+RUN echo 'root:root' | chpasswd
+
 # Dev env user
-RUN addgroup --gid 1000 devuser
-RUN adduser --disabled-password --gecos "" --uid 1000 --gid 1000 devuser
-RUN usermod -aG sudo devuser
-RUN echo 'devuser ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
-RUN passwd -d devuser
-ENV HOME /home/devuser
-USER devuser
+# RUN addgroup --gid 1000 devuser
+# RUN adduser --disabled-password --gecos "" --uid 1000 --gid 1000 devuser
+# RUN usermod -aG sudo devuser
+# RUN echo 'devuser ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
+# RUN passwd -d devuser
+# ENV HOME /home/devuser
+# USER devuser
+
+# Export rust environment variables for Rust IntelliJ over SSH
+RUN echo "export RUST_VERSION=${RUST_VERSION}" >> ~/.bashrc
+RUN echo "export RUSTUP_HOME=${RUSTUP_HOME}" >> ~/.bashrc
+RUN echo "export CARGO_HOME=${CARGO_HOME}" >> ~/.bashrc
+RUN echo "export PATH=${PATH}" >> ~/.bashrc
+
