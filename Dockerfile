@@ -22,15 +22,25 @@ RUN cargo install elf2uf2-rs --locked
 # Useful for flashing over the SWD pins using a supported JTAG probe
 RUN cargo install probe-run
 
-# SSH server
+# SSH server for remote coding
 EXPOSE 22
 RUN mkdir /var/run/sshd
-RUN echo 'root:root' | chpasswd
-RUN sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config
+RUN echo 'PermitRootLogin yes' >> /etc/ssh/sshd_config
+RUN echo 'PasswordAuthentication yes' >> /etc/ssh/sshd_config
+RUN echo 'PermitEmptyPasswords yes' >> /etc/ssh/sshd_config
+
+# Install sudo
+RUN apt-get install sudo    
+
+# Service mangement with supervisor
+RUN apt-get install -y supervisor
+COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
 # Dev env user
 RUN addgroup --gid 1000 devuser
-RUN adduser --gecos "" --uid 1000 --gid 1000 devuser
-RUN echo 'devuser:devuser' | chpasswd
+RUN adduser --disabled-password --gecos "" --uid 1000 --gid 1000 devuser
+RUN usermod -aG sudo devuser
+RUN echo 'devuser ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
+RUN passwd -d devuser
 ENV HOME /home/devuser
 USER devuser

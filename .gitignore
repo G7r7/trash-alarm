@@ -13,3 +13,7 @@ target/
 !.vscode/extensions.json
 !.vscode/settings.json
 .idea
+
+# supervisor
+supervisord.log
+supervisord.pid

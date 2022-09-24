@@ -9,7 +9,6 @@ services:
       - /dev:/dev
     privileged: true
     working_dir: /home/trash-alarm
-    command: tail -f /dev/null
-    ports: 
+    command: sudo /usr/bin/supervisord
+    ports:
       - 2222:22
-
