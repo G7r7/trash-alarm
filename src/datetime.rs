@@ -129,7 +129,11 @@ impl FromScreenAndButtons for DateTime {
                 match button_phase {
                     ButtonPhase::ButtonPhaseDayOfWeek => datetime.day_of_week = day_of_week_from_u8((datetime.day_of_week as u8 + 1) % 7),
                     ButtonPhase::ButtonPhaseTimeHourTens => datetime.hour = (datetime.hour + 10) % 30,
-                    _ => {}
+                    ButtonPhase::ButtonPhaseTimeHourUnits => datetime.hour = ((datetime.hour + 1) % ( if datetime.hour/10==2 {4} else {10})) + datetime.hour/10 * 10,
+                    ButtonPhase::ButtonPhaseTimeMinuteTens => datetime.minute = (datetime.minute + 10) % 60,
+                    ButtonPhase::ButtonPhaseTimeMinuteUnits => datetime.minute = (datetime.minute + 1) % 10 + datetime.minute/10 * 10,
+
+                    _ => {},
                 }
                 while increment_button.is_low().unwrap() {}
             }
@@ -139,12 +143,12 @@ impl FromScreenAndButtons for DateTime {
                 button_phase = get_button_phase_from_u8(&incr_button_phase);
                 while validate_button.is_low().unwrap() {}
             }
-            render(&datetime, lcd, delay, &button_phase);
 
+            if button_phase == ButtonPhase::ButtonPhaseFinished { return datetime }
+            render(&datetime, lcd, delay, &button_phase);
             // We wait for the next user input.
             while !increment_button.is_low().unwrap() && !validate_button.is_low().unwrap() {}
         }
-        return datetime;
     }
 }
 
