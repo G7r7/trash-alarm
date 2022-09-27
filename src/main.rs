@@ -41,8 +41,8 @@ fn main() -> ! {
         &mut pac.RESETS,
         &mut watchdog,
     )
-    .ok()
-    .unwrap();
+        .ok()
+        .unwrap();
 
     // The delay object lets us wait for specified amounts of time (in
     // milliseconds)
@@ -105,7 +105,7 @@ fn main() -> ! {
         lcd.set_cursor_position(0, 0).unwrap();
         lcd.write_str(time.to_date_arraystring().as_str()).unwrap();
         lcd.set_cursor_position(0, 1).unwrap();
-        lcd.write_str(time.to_time_arraystring().as_str()).unwrap();
+        lcd.write_str(time.to_time_arraystring(false).as_str()).unwrap();
         delay.delay_ms(1000);
     }
 }
