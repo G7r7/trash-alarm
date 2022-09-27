@@ -100,12 +100,12 @@ fn main() -> ! {
 
     // Blink the LED at 1 Hz
     loop {
+        delay.delay_ms(1000);
         let time = real_time_clock.now().unwrap();
 
         lcd.set_cursor_position(0, 0).unwrap();
-        lcd.write_str(time.to_date_arraystring().as_str()).unwrap();
+        lcd.write_str(time.to_day_of_week_arraystring().as_str()).unwrap();
         lcd.set_cursor_position(0, 1).unwrap();
         lcd.write_str(time.to_time_arraystring(false).as_str()).unwrap();
-        delay.delay_ms(1000);
     }
 }

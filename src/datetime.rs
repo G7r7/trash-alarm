@@ -18,6 +18,7 @@ use rp_pico::{
 pub trait FormatToArrayString {
     fn to_date_arraystring(&self) -> ArrayString<10>;
     fn to_time_arraystring(&self, without_seconds: bool) -> ArrayString<8>;
+    fn to_day_of_week_arraystring(&self) -> ArrayString<8>;
 }
 
 pub trait FromScreenAndButtons {
@@ -144,7 +145,11 @@ impl FromScreenAndButtons for DateTime {
                 while validate_button.is_low().unwrap() {}
             }
 
-            if button_phase == ButtonPhase::ButtonPhaseFinished { return datetime }
+            if button_phase == ButtonPhase::ButtonPhaseFinished {
+                lcd.set_blink(Blink::Off).unwrap();
+                lcd.clear(delay).unwrap();
+                return datetime
+            }
             render(&datetime, lcd, delay, &button_phase);
             // We wait for the next user input.
             while !increment_button.is_low().unwrap() && !validate_button.is_low().unwrap() {}
@@ -222,4 +227,7 @@ impl FormatToArrayString for DateTime {
         return time_string;
     }
 
+    fn to_day_of_week_arraystring(&self) -> ArrayString<8> {
+        return get_day_of_week_string(self.day_of_week);
+    }
 }
