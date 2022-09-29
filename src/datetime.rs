@@ -1,12 +1,11 @@
 use arrayvec::ArrayString;
-use core::fmt::{Error, Write};
+use core::fmt::{Write};
 use cortex_m::delay::Delay;
 // use defmt::write;
-use embedded_hal::{blocking::serial::write, digital::v2::InputPin};
+use embedded_hal::{digital::v2::InputPin};
 use lcd_1602_i2c::{Blink, Lcd};
 use rp_pico::{
     hal::{
-        self,
         gpio::{self, bank0::BankPinId, Function, Input, Pin, PinId, PullUp},
         rtc::{DateTime, DayOfWeek},
         I2C,
@@ -77,7 +76,6 @@ fn get_button_phase_string(button_phase: &ButtonPhase) -> ArrayString<16> {
         ButtonPhase::ButtonPhaseTimeMinuteTens => "Dizaine Minute ?",
         ButtonPhase::ButtonPhaseTimeMinuteUnits => "Unite Minute ?",
         ButtonPhase::ButtonPhaseFinished => "Finished ?",
-        _ => "WTF ?",
     };
 
     let mut ret_arrstr = ArrayString::<16>::new();
@@ -140,7 +138,7 @@ impl FromScreenAndButtons for DateTime {
             }
 
             if validate_button.is_low().unwrap() {
-                let mut incr_button_phase = button_phase as u8 + 1;
+                let incr_button_phase = button_phase as u8 + 1;
                 button_phase = get_button_phase_from_u8(&incr_button_phase);
                 while validate_button.is_low().unwrap() {}
             }

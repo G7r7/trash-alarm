@@ -3,7 +3,7 @@
 
 mod datetime;
 mod led;
-
+mod lcd;
 // Device I2C Addresses
 const LCD_ADDRESS: u8 = 0x7c >> 1;
 const RGB_ADDRESS: u8 = 0xc0 >> 1;
@@ -18,6 +18,7 @@ use panic_halt as _;
 // Time handling traits:
 use fugit::RateExtU32;
 use rp_pico::hal::rtc::{DateTime, RealTimeClock};
+use lcd::WriteCurrentDayAndTime;
 
 /// The `#[entry]` macro ensures the Cortex-M start-up code calls this function
 /// as soon as all global variables are initialised.
@@ -102,10 +103,7 @@ fn main() -> ! {
     loop {
         delay.delay_ms(1000);
         let time = real_time_clock.now().unwrap();
+        lcd.write_current_day_and_time(time);
 
-        lcd.set_cursor_position(0, 0).unwrap();
-        lcd.write_str(time.to_day_of_week_arraystring().as_str()).unwrap();
-        lcd.set_cursor_position(0, 1).unwrap();
-        lcd.write_str(time.to_time_arraystring(false).as_str()).unwrap();
     }
 }
