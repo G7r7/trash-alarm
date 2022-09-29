@@ -18,7 +18,10 @@ use panic_halt as _;
 // Time handling traits:
 use fugit::RateExtU32;
 use rp_pico::hal::rtc::{DateTime, RealTimeClock};
+use rp_pico::hal::Timer;
 use lcd::WriteCurrentDayAndTime;
+use lcd::RainbowAnimation;
+
 
 /// The `#[entry]` macro ensures the Cortex-M start-up code calls this function
 /// as soon as all global variables are initialised.
@@ -44,7 +47,6 @@ fn main() -> ! {
     )
         .ok()
         .unwrap();
-
     // The delay object lets us wait for specified amounts of time (in
     // milliseconds)
     let mut delay = cortex_m::delay::Delay::new(
@@ -88,6 +90,7 @@ fn main() -> ! {
     // Ask for datetime
     let mut increment_button = pins.gpio16.into_pull_up_input();
     let mut validate_button = pins.gpio17.into_pull_up_input();
+
     let date_time = DateTime::from_screen_and_buttons(
         &mut lcd,
         &mut delay,
@@ -97,11 +100,14 @@ fn main() -> ! {
 
     // Real Time Clock
     let real_time_clock =
-        RealTimeClock::new(pac.RTC, clocks.rtc_clock, &mut pac.RESETS, date_time).unwrap();
+       RealTimeClock::new(pac.RTC, clocks.rtc_clock, &mut pac.RESETS, date_time).unwrap();
+
+    let mut timer = Timer::new(pac.TIMER, &mut pac.RESETS);
 
     // Blink the LED at 1 Hz
     loop {
-        delay.delay_ms(1000);
+        delay.delay_ms(5);
+        lcd.animate_rainbow(30000, &mut timer);
         let time = real_time_clock.now().unwrap();
         lcd.write_current_day_and_time(time);
 
