@@ -37,7 +37,7 @@ RUN apt-get install sudo
 RUN apt-get install -y supervisor
 COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
-# Change root password
+# Change root password.
 RUN echo 'root:root' | chpasswd
 
 # Dev env user
@@ -49,9 +49,11 @@ RUN echo 'root:root' | chpasswd
 # ENV HOME /home/devuser
 # USER devuser
 
-# Export rust environment variables for Rust IntelliJ over SSH
+# Export rust environment variables for Rust IntelliJ over SSH.
 RUN echo "export RUST_VERSION=${RUST_VERSION}" >> ~/.bashrc
 RUN echo "export RUSTUP_HOME=${RUSTUP_HOME}" >> ~/.bashrc
 RUN echo "export CARGO_HOME=${CARGO_HOME}" >> ~/.bashrc
 RUN echo "export PATH=${PATH}" >> ~/.bashrc
 
+# Creating mount directory.
+RUN mkdir /mnt/pico

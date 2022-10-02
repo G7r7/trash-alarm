@@ -2,8 +2,12 @@
 #![no_main]
 
 mod datetime;
-mod led;
 mod lcd;
+mod led;
+mod alarm;
+mod task;
+mod callbacks;
+
 // Device I2C Addresses
 const LCD_ADDRESS: u8 = 0x7c >> 1;
 const RGB_ADDRESS: u8 = 0xc0 >> 1;
@@ -17,11 +21,10 @@ use panic_halt as _;
 
 // Time handling traits:
 use fugit::RateExtU32;
+use lcd::RainbowAnimation;
+use lcd::WriteCurrentDayAndTime;
 use rp_pico::hal::rtc::{DateTime, RealTimeClock};
 use rp_pico::hal::Timer;
-use lcd::WriteCurrentDayAndTime;
-use lcd::RainbowAnimation;
-
 
 /// The `#[entry]` macro ensures the Cortex-M start-up code calls this function
 /// as soon as all global variables are initialised.
@@ -45,8 +48,8 @@ fn main() -> ! {
         &mut pac.RESETS,
         &mut watchdog,
     )
-        .ok()
-        .unwrap();
+    .ok()
+    .unwrap();
     // The delay object lets us wait for specified amounts of time (in
     // milliseconds)
     let mut delay = cortex_m::delay::Delay::new(
@@ -100,7 +103,7 @@ fn main() -> ! {
 
     // Real Time Clock
     let real_time_clock =
-       RealTimeClock::new(pac.RTC, clocks.rtc_clock, &mut pac.RESETS, date_time).unwrap();
+        RealTimeClock::new(pac.RTC, clocks.rtc_clock, &mut pac.RESETS, date_time).unwrap();
 
     let mut timer = Timer::new(pac.TIMER, &mut pac.RESETS);
 
@@ -110,6 +113,5 @@ fn main() -> ! {
         lcd.animate_rainbow(30000, &mut timer);
         let time = real_time_clock.now().unwrap();
         lcd.write_current_day_and_time(time);
-
     }
 }
