@@ -118,7 +118,7 @@ fn main() -> ! {
         }
         delay.delay_ms(5);
         {
-            let ref_lcd = &lcd;
+            let ref_lcd = &mut lcd;
             ref_lcd.animate_rainbow(30000, &mut timer);
             let time = real_time_clock.now().unwrap();
             ref_lcd.write_current_day_and_time(time);
