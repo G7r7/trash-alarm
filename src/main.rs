@@ -24,8 +24,9 @@ use panic_halt as _;
 use fugit::RateExtU32;
 use lcd::RainbowAnimation;
 use lcd::WriteCurrentDayAndTime;
-use rp_pico::hal::rtc::{DateTime, RealTimeClock};
+use rp_pico::hal::rtc::{DateTime, DayOfWeek, RealTimeClock};
 use rp_pico::hal::Timer;
+use crate::alarm::{Alarm, Triggerable, WeeklyDate};
 use crate::callbacks::CallbackWriteText;
 use crate::task::Task;
 
@@ -110,18 +111,23 @@ fn main() -> ! {
 
     let mut timer = Timer::new(pac.TIMER, &mut pac.RESETS);
     let arraystr_description = ArrayString::<16>::from("caca").unwrap();
+
     // Blink the LED at 1 Hz
     loop {
-        {
-            let ref_lcd = &lcd;
-            let callback = CallbackWriteText::new(arraystr_description,ref_lcd);
-        }
-        delay.delay_ms(5);
-        {
-            let ref_lcd = &mut lcd;
+        {   let ref_lcd = &mut lcd;
+            delay.delay_ms(5);
             ref_lcd.animate_rainbow(30000, &mut timer);
             let time = real_time_clock.now().unwrap();
             ref_lcd.write_current_day_and_time(time);
         }
+        {
+            let ref_lcd = &mut lcd;
+            let callback = CallbackWriteText::new(arraystr_description, ref_lcd);
+            let callback2 = CallbackWriteText::new(arraystr_description, ref_lcd);
+            let alarm = Alarm::new(WeeklyDate::new(DayOfWeek::Monday, 0, 0, 10), arraystr_description, 10, 0, 0, callback, callback2);
+            let time = real_time_clock.now().unwrap();
+            alarm.trigger(time);
+        }
+
     }
 }
