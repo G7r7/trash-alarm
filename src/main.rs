@@ -13,6 +13,7 @@ const LCD_ADDRESS: u8 = 0x7c >> 1;
 const RGB_ADDRESS: u8 = 0xc0 >> 1;
 
 use core::u8;
+use arrayvec::ArrayString;
 
 use datetime::{FormatToArrayString, FromScreenAndButtons};
 // Ensure we halt the program on panic (if we don't mention this crate it won't
@@ -25,6 +26,8 @@ use lcd::RainbowAnimation;
 use lcd::WriteCurrentDayAndTime;
 use rp_pico::hal::rtc::{DateTime, RealTimeClock};
 use rp_pico::hal::Timer;
+use crate::callbacks::CallbackWriteText;
+use crate::task::Task;
 
 /// The `#[entry]` macro ensures the Cortex-M start-up code calls this function
 /// as soon as all global variables are initialised.
@@ -106,12 +109,19 @@ fn main() -> ! {
         RealTimeClock::new(pac.RTC, clocks.rtc_clock, &mut pac.RESETS, date_time).unwrap();
 
     let mut timer = Timer::new(pac.TIMER, &mut pac.RESETS);
-
+    let arraystr_description = ArrayString::<16>::from("caca").unwrap();
     // Blink the LED at 1 Hz
     loop {
+        {
+            let ref_lcd = &lcd;
+            let callback = CallbackWriteText::new(arraystr_description,ref_lcd);
+        }
         delay.delay_ms(5);
-        lcd.animate_rainbow(30000, &mut timer);
-        let time = real_time_clock.now().unwrap();
-        lcd.write_current_day_and_time(time);
+        {
+            let ref_lcd = &lcd;
+            ref_lcd.animate_rainbow(30000, &mut timer);
+            let time = real_time_clock.now().unwrap();
+            ref_lcd.write_current_day_and_time(time);
+        }
     }
 }

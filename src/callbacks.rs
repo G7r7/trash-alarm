@@ -13,12 +13,18 @@ pub trait Callback{
     fn call();
 }
 
-pub struct CallbackWriteText <DP: PinId + BankPinId, CP: PinId + BankPinId>{
+pub struct CallbackWriteText <'b, DP: PinId + BankPinId, CP: PinId + BankPinId>{
     text: ArrayString<16>,
-    lcd: Lcd<I2C<I2C0, (Pin<DP, Function<gpio::I2C>>, Pin<CP, Function<gpio::I2C>>)>>
+    lcd: &'b Lcd<I2C<I2C0, (Pin<DP, Function<gpio::I2C>>, Pin<CP, Function<gpio::I2C>>)>>
 }
 
-impl <DP: PinId + BankPinId, CP: PinId + BankPinId> CallbackWriteText <DP,CP>{
+impl<DP: PinId + BankPinId, CP: PinId + BankPinId> CallbackWriteText<'_, DP, CP> {
+    pub fn new(text: ArrayString<16>, lcd: &'_ Lcd<I2C<I2C0, (Pin<DP, Function<gpio::I2C>>, Pin<CP, Function<gpio::I2C>>)>>) -> Self {
+        Self { text, lcd }
+    }
+}
+
+impl <DP: PinId + BankPinId, CP: PinId + BankPinId> CallbackWriteText <'_,DP,CP>{
     pub fn text(&self) -> ArrayString<16> {
         self.text
     }
@@ -28,7 +34,7 @@ impl <DP: PinId + BankPinId, CP: PinId + BankPinId> CallbackWriteText <DP,CP>{
     }
 }
 
-impl <DP: PinId + BankPinId, CP: PinId + BankPinId> Callback for CallbackWriteText <DP,CP>{
+impl <DP: PinId + BankPinId, CP: PinId + BankPinId> Callback for CallbackWriteText <'_ ,DP,CP>{
     fn call() {
         todo!()
     }
