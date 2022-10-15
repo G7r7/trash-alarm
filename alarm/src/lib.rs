@@ -81,12 +81,61 @@ impl <AA: Callback, GA: Callback> Alarm <AA, GA, WeeklyDate> where AA: Callback,
 
 #[cfg(test)]
 mod tests {
-    use std::println;
+    use arrayvec::ArrayString;
+    use rp_pico::hal::rtc::DayOfWeek;
+    use callback::Callback;
+    use crate::{Alarm, DateTime, WeeklyDate};
+
+    struct DummyCallback {}
+    impl Callback for DummyCallback {
+        fn call(&mut self) {
+            todo!()
+        }
+    }
 
     #[test]
-    fn test1() {
-        println!("hey!");
-        let res = 1 + 1;
-        assert_eq!(res, 2);
+    fn simple_in_period_date_check() {
+        let callback1 = DummyCallback{};
+        let callback2 = DummyCallback{};
+        let alarm = Alarm::new(WeeklyDate::new(
+            DayOfWeek::Monday,
+            0,
+            0,
+            10), ArrayString::<16>::from("descr").unwrap(), 30, 0, 0,
+            callback1, callback2);
+        let time = DateTime{
+            year: 0,
+            month: 0,
+            day: 0,
+            day_of_week: DayOfWeek::Monday,
+            hour: 0,
+            minute: 0,
+            second: 20
+        };
+        let res = alarm.is_date_in_activation_period(time);
+        assert_eq!(res, true);
+    }
+
+    #[test]
+    fn simple_not_in_period_date_check() {
+        let callback1 = DummyCallback{};
+        let callback2 = DummyCallback{};
+        let alarm = Alarm::new(WeeklyDate::new(
+            DayOfWeek::Monday,
+            0,
+            0,
+            10), ArrayString::<16>::from("descr").unwrap(), 30, 0, 0,
+                               callback1, callback2);
+        let time = DateTime{
+            year: 0,
+            month: 0,
+            day: 0,
+            day_of_week: DayOfWeek::Monday,
+            hour: 0,
+            minute: 0,
+            second: 0
+        };
+        let res = alarm.is_date_in_activation_period(time);
+        assert_eq!(res, false);
     }
 }
