@@ -1,6 +1,8 @@
-use crate::FormatToArrayString;
+#![no_std]
+
 use rp_pico::hal::gpio::{bank0::BankPinId, Function, Pin, PinId};
 use rp_pico::hal::rtc::DateTime;
+use datetime::FormatToArrayString;
 use rp_pico::hal::{gpio, Timer, I2C};
 use rp_pico::pac::I2C0;
 

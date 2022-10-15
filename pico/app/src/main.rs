@@ -1,13 +1,6 @@
 #![no_std]
 #![no_main]
 
-mod datetime;
-mod lcd;
-mod led;
-mod alarm;
-mod task;
-mod callbacks;
-
 // Device I2C Addresses
 const LCD_ADDRESS: u8 = 0x7c >> 1;
 const RGB_ADDRESS: u8 = 0xc0 >> 1;
@@ -27,9 +20,8 @@ use lcd::RainbowAnimation;
 use lcd::WriteCurrentDayAndTime;
 use rp_pico::hal::rtc::{DateTime, DayOfWeek, RealTimeClock};
 use rp_pico::hal::Timer;
-use crate::alarm::{Alarm, Triggerable, WeeklyDate};
-use crate::callbacks::{CallbackDoNothing, CallbackWriteText};
-use crate::task::Task;
+use callbacks::{CallbackWriteText, CallbackDoNothing};
+use alarm::{Alarm, WeeklyDate};
 
 /// The `#[entry]` macro ensures the Cortex-M start-up code calls this function
 /// as soon as all global variables are initialised.

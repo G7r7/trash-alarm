@@ -1,3 +1,5 @@
+#![no_std]
+
 use lcd_1602_i2c::Lcd;
 use rp_pico::{
     hal::{
@@ -8,10 +10,7 @@ use rp_pico::{
     pac::I2C0,
 };
 use arrayvec::ArrayString;
-
-pub trait Callback{
-    fn call(&mut self);
-}
+use callback::Callback;
 
 pub struct CallbackWriteText <'a, DP: PinId + BankPinId, CP: PinId + BankPinId>{
     text: ArrayString<16>,

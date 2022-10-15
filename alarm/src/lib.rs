@@ -1,7 +1,9 @@
+#![cfg_attr(not(test), no_std)]
+
 use arrayvec::ArrayString;
-use rp_pico::hal::rtc::DayOfWeek;
-use crate::callbacks::Callback;
-use crate::DateTime;
+use rp_pico::hal::rtc::{DayOfWeek, DateTime};
+use callback::Callback;
+
 pub struct Alarm<AA, GA, DateFormat>  {
     date: DateFormat,
     description: ArrayString<16>,
@@ -79,8 +81,11 @@ impl <AA: Callback, GA: Callback> Alarm <AA, GA, WeeklyDate> where AA: Callback,
 
 #[cfg(test)]
 mod tests {
+    use std::println;
+
     #[test]
     fn test1() {
+        println!("hey!");
         let res = 1 + 1;
         assert_eq!(res, 2);
     }

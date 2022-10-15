@@ -1,3 +1,5 @@
+#![no_std]
+
 use arrayvec::ArrayString;
 use core::fmt::Write;
 use cortex_m::delay::Delay;

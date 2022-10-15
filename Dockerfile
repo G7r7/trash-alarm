@@ -56,4 +56,4 @@ RUN echo "export CARGO_HOME=${CARGO_HOME}" >> ~/.bashrc
 RUN echo "export PATH=${PATH}" >> ~/.bashrc
 
 # Creating mount directory.
-RUN mkdir /mnt/pico
+RUN mkdir /mnt/pico-trash-alarm

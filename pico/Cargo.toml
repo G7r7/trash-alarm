@@ -1,0 +1,8 @@
+[workspace]
+members = [
+    "app",
+    "callbacks",
+    "datetime",
+    "lcd",
+    "led"
+]
