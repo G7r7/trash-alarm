@@ -33,19 +33,21 @@ impl WeeklyDate {
 }
 
 pub trait Triggerable{
-    fn trigger(&mut self, current_time: DateTime);
+    fn trigger(&mut self, current_time: DateTime) ->bool;
 }
 
 impl <AA: Callback, GA: Callback>Triggerable for Alarm <AA, GA, WeeklyDate> where AA: Callback, GA: Callback{
-    fn trigger(&mut self, current_time: DateTime) {
+    fn trigger(&mut self, current_time: DateTime) -> bool{
         if self.is_active && self.is_date_in_activation_period(current_time) {
             self.gentle_action.call();
+            return true;
         }
+        return false;
     }
 }
 
 impl <AA: Callback, GA: Callback> Alarm <AA, GA, WeeklyDate> where AA: Callback, GA: Callback{
-    fn is_date_in_activation_period(&self, current_datetime: DateTime) -> bool {
+    pub fn is_date_in_activation_period(&self, current_datetime: DateTime) -> bool {
         let mut seconds_since_week_start = 0u32;
         seconds_since_week_start += current_datetime.second as u32;
         seconds_since_week_start += current_datetime.minute as u32 * 60;
@@ -72,5 +74,14 @@ impl <AA: Callback, GA: Callback> Alarm <AA, GA, WeeklyDate> where AA: Callback,
         };
 
         return is_in_activation_period;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn test1() {
+        let res = 1 + 1;
+        assert_eq!(res, 2);
     }
 }

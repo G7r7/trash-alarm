@@ -39,3 +39,17 @@ impl <DP: PinId + BankPinId, CP: PinId + BankPinId> Callback for CallbackWriteTe
         self.lcd.write_str(self.text.as_str()).unwrap();
     }
 }
+
+pub struct CallbackDoNothing{}
+
+impl CallbackDoNothing {
+    pub fn new() -> Self {
+        Self {}
+    }
+}
+
+impl Callback for CallbackDoNothing{
+    fn call(&mut self) {
+        // ⸸ CI JIT Guillaume ⸸ (Amen)
+    }
+}

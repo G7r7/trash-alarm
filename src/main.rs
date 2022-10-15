@@ -14,6 +14,7 @@ const RGB_ADDRESS: u8 = 0xc0 >> 1;
 
 use core::u8;
 use arrayvec::ArrayString;
+use embedded_hal::prelude::_embedded_hal_blocking_spi_Write;
 
 use datetime::{FormatToArrayString, FromScreenAndButtons};
 // Ensure we halt the program on panic (if we don't mention this crate it won't
@@ -27,7 +28,7 @@ use lcd::WriteCurrentDayAndTime;
 use rp_pico::hal::rtc::{DateTime, DayOfWeek, RealTimeClock};
 use rp_pico::hal::Timer;
 use crate::alarm::{Alarm, Triggerable, WeeklyDate};
-use crate::callbacks::CallbackWriteText;
+use crate::callbacks::{CallbackDoNothing, CallbackWriteText};
 use crate::task::Task;
 
 /// The `#[entry]` macro ensures the Cortex-M start-up code calls this function
@@ -116,17 +117,19 @@ fn main() -> ! {
     loop {
         {   let ref_lcd = &mut lcd;
             delay.delay_ms(5);
-            ref_lcd.animate_rainbow(30000, &mut timer);
+            ref_lcd.animate_rainbow(301, &mut timer);
             let time = real_time_clock.now().unwrap();
-            ref_lcd.write_current_day_and_time(time);
+            //ref_lcd.write_current_day_and_time(time);
         }
         {
             let ref_lcd = &mut lcd;
             let callback = CallbackWriteText::new(arraystr_description, ref_lcd);
-            let callback2 = CallbackWriteText::new(arraystr_description, ref_lcd);
-            let alarm = Alarm::new(WeeklyDate::new(DayOfWeek::Monday, 0, 0, 10), arraystr_description, 10, 0, 0, callback, callback2);
+            let callback2 = CallbackDoNothing::new();
+            let mut alarm = Alarm::new(WeeklyDate::new(DayOfWeek::Monday, 0, 0, 10), arraystr_description, 10, 0, 0, callback, callback2);
             let time = real_time_clock.now().unwrap();
-            alarm.trigger(time);
+            //alarm.trigger(time);
+            //ref_lcd.write_str(if alarm.is_date_in_activation_period(time) {"1"} else {"0"}).unwrap();
+            //if alarm.is_date_in_activation_period(time) {delay.delay_ms(10000)}
         }
 
     }
