@@ -66,7 +66,7 @@ impl <AA: Callback, GA: Callback> Alarm <AA, GA, WeeklyDate> where AA: Callback,
 
         let end_time_in_seconds = trigger_time_in_seconds + self.total_duration_sec;
 
-        let is_in_activation_period = if end_time_in_seconds <= trigger_time_in_seconds {
+        let is_in_activation_period = if end_time_in_seconds >= trigger_time_in_seconds {
             // Case start < end%second_in_week
             seconds_since_week_start > trigger_time_in_seconds
                 && seconds_since_week_start < end_time_in_seconds
