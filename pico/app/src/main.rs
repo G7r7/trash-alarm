@@ -8,6 +8,7 @@ const RGB_ADDRESS: u8 = 0xc0 >> 1;
 use core::u8;
 use arrayvec::ArrayString;
 use embedded_hal::prelude::_embedded_hal_blocking_spi_Write;
+use embedded_hal::digital::v2::OutputPin;
 
 use datetime::{FormatToArrayString, FromScreenAndButtons};
 // Ensure we halt the program on panic (if we don't mention this crate it won't
@@ -70,6 +71,7 @@ fn main() -> ! {
     // Configure two pins as being I²C, not GPIO
     let sda_pin = pins.gpio0.into_mode::<rp_pico::hal::gpio::FunctionI2C>();
     let scl_pin = pins.gpio1.into_mode::<rp_pico::hal::gpio::FunctionI2C>();
+    let mut buzzer_pin = pins.gpio15.into_push_pull_output();
 
     // Create the I²C driver, using the two pre-configured pins. This will fail
     // at compile time if the pins are in the wrong mode, or if this I²C
@@ -121,10 +123,10 @@ fn main() -> ! {
             let ref_lcd = &mut lcd;
             let callback = CallbackWriteText::new(arraystr_description, ref_lcd, &mut delay);
             //let callback = CallbackDoNothing::new();
-            let callback2 = CallbackDoNothing::new();
-            let mut alarm = Alarm::new(WeeklyDate::new(DayOfWeek::Monday, 0, 0, 5), arraystr_description, 5, 0, 0, callback2, callback);
+            let mut alarm = Alarm::new(WeeklyDate::new(DayOfWeek::Monday, 0, 0, 5), arraystr_description, 5, 0, 0, callback);
             let time = real_time_clock.now().unwrap();
             alarm_triggered = alarm.trigger(time);
+            buzzer_pin.set_high().unwrap();
             //ref_lcd.write_str(if alarm.trigger(time) {"1"} else {"0"}).unwrap();
             //if alarm.is_date_in_activation_period(time) {delay.delay_ms(10000)}
         }

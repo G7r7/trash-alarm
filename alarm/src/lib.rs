@@ -4,20 +4,19 @@ use arrayvec::ArrayString;
 use rp_pico::hal::rtc::{DayOfWeek, DateTime};
 use callback::Callback;
 
-pub struct Alarm<AA, GA, DateFormat>  {
+pub struct Alarm<C, DateFormat>  {
     date: DateFormat,
     description: ArrayString<16>,
     total_duration_sec: u32,
     intense_duration_sec: u32,
     pause_duration_sec: u32,
-    aggressive_action: AA,
-    gentle_action: GA,
+    action: C,
     is_active: bool
 }
 
-impl<AA, GA, DateFormat> Alarm<AA, GA, DateFormat> {
-    pub fn new(date: DateFormat, description: ArrayString<16>, total_duration_sec: u32, intense_duration_sec: u32, pause_duration_sec: u32, aggressive_action: AA, gentle_action: GA) -> Self {
-        Self { date, description, total_duration_sec, intense_duration_sec, pause_duration_sec, aggressive_action, gentle_action, is_active: true }
+impl<C, DateFormat> Alarm<C, DateFormat> {
+    pub fn new(date: DateFormat, description: ArrayString<16>, total_duration_sec: u32, intense_duration_sec: u32, pause_duration_sec: u32, action: C) -> Self {
+        Self { date, description, total_duration_sec, intense_duration_sec, pause_duration_sec, action: action, is_active: true }
     }
 }
 
@@ -38,17 +37,17 @@ pub trait Triggerable{
     fn trigger(&mut self, current_time: DateTime) ->bool;
 }
 
-impl <AA: Callback, GA: Callback>Triggerable for Alarm <AA, GA, WeeklyDate> where AA: Callback, GA: Callback{
+impl <C:Callback>Triggerable for Alarm <C, WeeklyDate> where C:Callback{
     fn trigger(&mut self, current_time: DateTime) -> bool{
         if self.is_active && self.is_date_in_activation_period(current_time) {
-            self.gentle_action.call();
+            self.action.call();
             return true;
         }
         return false;
     }
 }
 
-impl <AA: Callback, GA: Callback> Alarm <AA, GA, WeeklyDate> where AA: Callback, GA: Callback{
+impl <C:Callback> Alarm <C, WeeklyDate> where C:Callback{
     pub fn is_date_in_activation_period(&self, current_datetime: DateTime) -> bool {
         let mut seconds_since_week_start = 0u32;
         seconds_since_week_start += current_datetime.second as u32;
