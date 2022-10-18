@@ -105,26 +105,31 @@ fn main() -> ! {
     let arraystr_description = ArrayString::<16>::from("caca").unwrap();
 
     // Blink the LED at 1 Hz
+
+    let mut alarm_triggered = false;
+
     loop {
-        // {   let ref_lcd = &mut lcd;
-        //     delay.delay_ms(5);
-        //     ref_lcd.animate_rainbow(301, &mut timer);
-        //     let time = real_time_clock.now().unwrap();
-        //     //ref_lcd.write_current_day_and_time(time);
-        // }
+        {
+            let ref_lcd = &mut lcd;
+            ref_lcd.animate_rainbow(10000, &mut timer);
+            let time = real_time_clock.now().unwrap();
+            if !alarm_triggered {
+                ref_lcd.write_current_day_and_time(time);
+            }
+        }
         {
             let ref_lcd = &mut lcd;
             let callback = CallbackWriteText::new(arraystr_description, ref_lcd, &mut delay);
             //let callback = CallbackDoNothing::new();
             let callback2 = CallbackDoNothing::new();
-            let mut alarm = Alarm::new(WeeklyDate::new(DayOfWeek::Monday, 0, 0, 2), arraystr_description, 10, 0, 0, callback2, callback);
+            let mut alarm = Alarm::new(WeeklyDate::new(DayOfWeek::Monday, 0, 0, 5), arraystr_description, 5, 0, 0, callback2, callback);
             let time = real_time_clock.now().unwrap();
-            alarm.trigger(time);
+            alarm_triggered = alarm.trigger(time);
             //ref_lcd.write_str(if alarm.trigger(time) {"1"} else {"0"}).unwrap();
             //if alarm.is_date_in_activation_period(time) {delay.delay_ms(10000)}
         }
         {
-            delay.delay_ms(5);
+            delay.delay_ms(20);
             lcd.clear(&mut delay).unwrap();
         }
 
