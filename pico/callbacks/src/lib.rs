@@ -11,15 +11,17 @@ use rp_pico::{
 };
 use arrayvec::ArrayString;
 use callback::Callback;
+use cortex_m::delay::Delay;
 
 pub struct CallbackWriteText <'a, DP: PinId + BankPinId, CP: PinId + BankPinId>{
     text: ArrayString<16>,
-    lcd: &'a mut Lcd<I2C<I2C0, (Pin<DP, Function<gpio::I2C>>, Pin<CP, Function<gpio::I2C>>)>>
+    lcd: &'a mut Lcd<I2C<I2C0, (Pin<DP, Function<gpio::I2C>>, Pin<CP, Function<gpio::I2C>>)>>,
+    delay: &'a mut Delay
 }
 
 impl<'a, DP: PinId + BankPinId, CP: PinId + BankPinId> CallbackWriteText<'a, DP, CP> {
-    pub fn new(text: ArrayString<16>, lcd: &'a mut Lcd<I2C<I2C0, (Pin<DP, Function<gpio::I2C>>, Pin<CP, Function<gpio::I2C>>)>>) -> CallbackWriteText<'a, DP, CP> {
-        Self{ text, lcd }
+    pub fn new(text: ArrayString<16>, lcd: &'a mut Lcd<I2C<I2C0, (Pin<DP, Function<gpio::I2C>>, Pin<CP, Function<gpio::I2C>>)>>, delay: &'a mut Delay ) -> CallbackWriteText<'a, DP, CP> {
+        Self{ text, lcd, delay }
     }
 }
 
@@ -35,6 +37,8 @@ impl <DP: PinId + BankPinId, CP: PinId + BankPinId> CallbackWriteText <'_,DP,CP>
 
 impl <DP: PinId + BankPinId, CP: PinId + BankPinId> Callback for CallbackWriteText <'_ ,DP,CP>{
     fn call(&mut self) {
+        self.lcd.clear(self.delay).unwrap();
+        self.lcd.set_cursor_position(0,0).unwrap();
         self.lcd.write_str(self.text.as_str()).unwrap();
     }
 }

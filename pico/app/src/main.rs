@@ -21,7 +21,7 @@ use lcd::WriteCurrentDayAndTime;
 use rp_pico::hal::rtc::{DateTime, DayOfWeek, RealTimeClock};
 use rp_pico::hal::Timer;
 use callbacks::{CallbackWriteText, CallbackDoNothing};
-use alarm::{Alarm, WeeklyDate};
+use alarm::{Alarm, Triggerable, WeeklyDate};
 
 /// The `#[entry]` macro ensures the Cortex-M start-up code calls this function
 /// as soon as all global variables are initialised.
@@ -86,7 +86,6 @@ fn main() -> ! {
     let mut lcd = lcd_1602_i2c::Lcd::new(i2c, LCD_ADDRESS, RGB_ADDRESS, &mut delay).unwrap();
     lcd.clear(&mut delay).unwrap();
     lcd.set_rgb(128, 128, 128).unwrap();
-
     // Ask for datetime
     let mut increment_button = pins.gpio16.into_pull_up_input();
     let mut validate_button = pins.gpio17.into_pull_up_input();
@@ -107,21 +106,26 @@ fn main() -> ! {
 
     // Blink the LED at 1 Hz
     loop {
-        {   let ref_lcd = &mut lcd;
-            delay.delay_ms(5);
-            ref_lcd.animate_rainbow(301, &mut timer);
-            let time = real_time_clock.now().unwrap();
-            //ref_lcd.write_current_day_and_time(time);
-        }
+        // {   let ref_lcd = &mut lcd;
+        //     delay.delay_ms(5);
+        //     ref_lcd.animate_rainbow(301, &mut timer);
+        //     let time = real_time_clock.now().unwrap();
+        //     //ref_lcd.write_current_day_and_time(time);
+        // }
         {
             let ref_lcd = &mut lcd;
-            let callback = CallbackWriteText::new(arraystr_description, ref_lcd);
+            let callback = CallbackWriteText::new(arraystr_description, ref_lcd, &mut delay);
+            //let callback = CallbackDoNothing::new();
             let callback2 = CallbackDoNothing::new();
-            let mut alarm = Alarm::new(WeeklyDate::new(DayOfWeek::Monday, 0, 0, 10), arraystr_description, 10, 0, 0, callback, callback2);
+            let mut alarm = Alarm::new(WeeklyDate::new(DayOfWeek::Monday, 0, 0, 2), arraystr_description, 10, 0, 0, callback2, callback);
             let time = real_time_clock.now().unwrap();
-            //alarm.trigger(time);
-            //ref_lcd.write_str(if alarm.is_date_in_activation_period(time) {"1"} else {"0"}).unwrap();
+            alarm.trigger(time);
+            //ref_lcd.write_str(if alarm.trigger(time) {"1"} else {"0"}).unwrap();
             //if alarm.is_date_in_activation_period(time) {delay.delay_ms(10000)}
+        }
+        {
+            delay.delay_ms(5);
+            lcd.clear(&mut delay).unwrap();
         }
 
     }
