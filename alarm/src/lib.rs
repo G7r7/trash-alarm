@@ -84,12 +84,12 @@ mod tests {
     use arrayvec::ArrayString;
     use rp_pico::hal::rtc::DayOfWeek;
     use callback::Callback;
-    use crate::{Alarm, DateTime, WeeklyDate};
+    use crate::{Alarm, DateTime, Triggerable, WeeklyDate};
 
     struct DummyCallback {}
     impl Callback for DummyCallback {
         fn call(&mut self) {
-            todo!()
+            println!("SQUIK :3")
         }
     }
 
@@ -344,5 +344,51 @@ mod tests {
         };
         let res = alarm.is_date_in_activation_period(time);
         assert_eq!(res, false);
+    }
+
+    #[test]
+    fn triggr_test_true(){
+        let callback1 = DummyCallback{};
+        let callback2 = DummyCallback{};
+        let mut alarm = Alarm::new(WeeklyDate::new(
+            DayOfWeek::Monday,
+            0,
+            0,
+            10), ArrayString::<16>::from("descr").unwrap(), 30, 0, 0,
+                               callback1, callback2);
+        let time = DateTime{
+            year: 0,
+            month: 0,
+            day: 0,
+            day_of_week: DayOfWeek::Monday,
+            hour: 0,
+            minute: 0,
+            second: 20
+        };
+
+        assert_eq!(alarm.trigger(time),true);
+    }
+
+    #[test]
+    fn triggr_test_false(){
+        let callback1 = DummyCallback{};
+        let callback2 = DummyCallback{};
+        let mut alarm = Alarm::new(WeeklyDate::new(
+            DayOfWeek::Monday,
+            0,
+            0,
+            10), ArrayString::<16>::from("descr").unwrap(), 30, 0, 0,
+                                   callback1, callback2);
+        let time = DateTime{
+            year: 0,
+            month: 0,
+            day: 0,
+            day_of_week: DayOfWeek::Monday,
+            hour: 0,
+            minute: 0,
+            second: 0
+        };
+
+        assert_eq!(alarm.trigger(time),false);
     }
 }
