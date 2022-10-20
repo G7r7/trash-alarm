@@ -12,3 +12,4 @@ datetime = { path = "../datetime" }
 arrayvec = { version = "0.7.2", features = [], default-features = false }
 callback = { path = "../../callback" }
 cortex-m = "0.7"
+embedded-hal = { version = "0.2.5", features = ["unproven"] }

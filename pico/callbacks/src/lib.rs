@@ -12,6 +12,8 @@ use rp_pico::{
 use arrayvec::ArrayString;
 use callback::Callback;
 use cortex_m::delay::Delay;
+use rp_pico::hal::gpio::{Output, PushPull};
+use embedded_hal::digital::v2::OutputPin;
 
 pub struct CallbackWriteText <'a, DP: PinId + BankPinId, CP: PinId + BankPinId>{
     text: ArrayString<16>,
@@ -54,5 +56,29 @@ impl CallbackDoNothing {
 impl Callback for CallbackDoNothing{
     fn call(&mut self) {
         // ⸸ CI JIT Guillaume ⸸ (Amen)
+    }
+}
+
+pub struct CallbackBuzzer <'a, T: PinId>{
+    buzzer: &'a mut Pin<T, Output<PushPull>>,
+    single_buzz_duration_ms: u32,
+    repetitions: u32,
+    delay: &'a mut Delay
+}
+
+impl<'a, T: PinId> CallbackBuzzer<'a, T> {
+    pub fn new(buzzer: &'a mut Pin<T, Output<PushPull>>, single_buzz_duration_ms: u32, repetitions: u32, delay: &'a mut Delay) -> Self {
+        Self { buzzer, single_buzz_duration_ms, repetitions, delay }
+    }
+}
+
+impl <'a, T: PinId> Callback for CallbackBuzzer<'a, T> {
+    fn call(&mut self) {
+        for i in 0..self.repetitions {
+            self.buzzer.set_high().unwrap();
+            self.delay.delay_ms(self.single_buzz_duration_ms);
+            self.buzzer.set_low().unwrap();
+            self.delay.delay_ms(500);
+        }
     }
 }

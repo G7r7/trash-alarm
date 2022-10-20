@@ -21,7 +21,7 @@ use lcd::RainbowAnimation;
 use lcd::WriteCurrentDayAndTime;
 use rp_pico::hal::rtc::{DateTime, DayOfWeek, RealTimeClock};
 use rp_pico::hal::Timer;
-use callbacks::{CallbackWriteText, CallbackDoNothing};
+use callbacks::{CallbackWriteText, CallbackDoNothing, CallbackBuzzer};
 use alarm::{Alarm, Triggerable, WeeklyDate};
 
 /// The `#[entry]` macro ensures the Cortex-M start-up code calls this function
@@ -121,12 +121,12 @@ fn main() -> ! {
         }
         {
             let ref_lcd = &mut lcd;
-            let callback = CallbackWriteText::new(arraystr_description, ref_lcd, &mut delay);
+            let callback = CallbackBuzzer::new(&mut buzzer_pin,1000, 3, &mut delay);
             //let callback = CallbackDoNothing::new();
             let mut alarm = Alarm::new(WeeklyDate::new(DayOfWeek::Monday, 0, 0, 5), arraystr_description, 5, 0, 0, callback);
             let time = real_time_clock.now().unwrap();
             alarm_triggered = alarm.trigger(time);
-            buzzer_pin.set_high().unwrap();
+            // buzzer_pin.set_high().unwrap();
             //ref_lcd.write_str(if alarm.trigger(time) {"1"} else {"0"}).unwrap();
             //if alarm.is_date_in_activation_period(time) {delay.delay_ms(10000)}
         }
