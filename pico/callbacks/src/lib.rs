@@ -10,10 +10,10 @@ use rp_pico::{
     pac::I2C0,
 };
 use arrayvec::ArrayString;
-use callback::Callback;
+use callback::{Callback, Stopper};
 use cortex_m::delay::Delay;
 use rp_pico::hal::gpio::{Output, PushPull};
-use embedded_hal::digital::v2::OutputPin;
+use embedded_hal::digital::v2::{InputPin, OutputPin, StatefulOutputPin};
 
 pub struct CallbackWriteText <'a, DP: PinId + BankPinId, CP: PinId + BankPinId>{
     text: ArrayString<16>,
@@ -59,26 +59,44 @@ impl Callback for CallbackDoNothing{
     }
 }
 
-pub struct CallbackBuzzer <'a, T: PinId>{
+pub struct CallbackBuzzer <'a, T: PinId, S: Stopper>{
     buzzer: &'a mut Pin<T, Output<PushPull>>,
     single_buzz_duration_ms: u32,
     repetitions: u32,
-    delay: &'a mut Delay
+    delay: &'a mut Delay,
+    stopper: S
 }
 
-impl<'a, T: PinId> CallbackBuzzer<'a, T> {
-    pub fn new(buzzer: &'a mut Pin<T, Output<PushPull>>, single_buzz_duration_ms: u32, repetitions: u32, delay: &'a mut Delay) -> Self {
-        Self { buzzer, single_buzz_duration_ms, repetitions, delay }
+impl<'a, T: PinId, S: Stopper> CallbackBuzzer<'a, T, S> {
+    pub fn new(buzzer: &'a mut Pin<T, Output<PushPull>>, single_buzz_duration_ms: u32, repetitions: u32, delay: &'a mut Delay, stopper: S) -> Self {
+        Self { buzzer, single_buzz_duration_ms, repetitions, delay, stopper }
     }
 }
 
-impl <'a, T: PinId> Callback for CallbackBuzzer<'a, T> {
+impl <'a, T: PinId, S: Stopper> Callback for CallbackBuzzer<'a, T, S> {
     fn call(&mut self) {
         for i in 0..self.repetitions {
             self.buzzer.set_high().unwrap();
             self.delay.delay_ms(self.single_buzz_duration_ms);
             self.buzzer.set_low().unwrap();
             self.delay.delay_ms(500);
+            if self.stopper.should_stop() {break;}
         }
+    }
+}
+
+pub struct StopperButton <'a, IP: PinId>{
+    button: &'a mut Pin<IP, Input<PullUp>>,
+}
+
+impl<'a, IP: PinId> StopperButton<'a, IP> {
+    pub fn new(button: &'a mut Pin<IP, Input<PullUp>>) -> Self {
+        Self { button }
+    }
+}
+
+impl<'a, T: PinId> Stopper for StopperButton<'a, T>{
+    fn should_stop(&mut self) -> bool {
+        self.button.is_low().unwrap()
     }
 }
