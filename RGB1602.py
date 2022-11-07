@@ -1,19 +1,19 @@
 # -*- coding: utf-8 -*-
 import time
-from machine import Pin,I2C
+from machine import Pin, I2C
 
-#Device I2C Arress
-LCD_ADDRESS   =  (0x7c>>1)
-RGB_ADDRESS   =  (0xc0>>1)
+# Device I2C Arress
+LCD_ADDRESS = (0x7c >> 1)
+RGB_ADDRESS = (0xc0 >> 1)
 
-#color define
+# color define
 
-REG_RED    =     0x04
-REG_GREEN  =     0x03
-REG_BLUE   =     0x02
-REG_MODE1  =     0x00
-REG_MODE2  =     0x01
-REG_OUTPUT =     0x08
+REG_RED = 0x04
+REG_GREEN = 0x03
+REG_BLUE = 0x02
+REG_MODE1 = 0x00
+REG_MODE2 = 0x01
+REG_OUTPUT = 0x08
 LCD_CLEARDISPLAY = 0x01
 LCD_RETURNHOME = 0x02
 LCD_ENTRYMODESET = 0x04
@@ -23,13 +23,13 @@ LCD_FUNCTIONSET = 0x20
 LCD_SETCGRAMADDR = 0x40
 LCD_SETDDRAMADDR = 0x80
 
-#flags for display entry mode
+# flags for display entry mode
 LCD_ENTRYRIGHT = 0x00
 LCD_ENTRYLEFT = 0x02
 LCD_ENTRYSHIFTINCREMENT = 0x01
 LCD_ENTRYSHIFTDECREMENT = 0x00
 
-#flags for display on/off control
+# flags for display on/off control
 LCD_DISPLAYON = 0x04
 LCD_DISPLAYOFF = 0x00
 LCD_CURSORON = 0x02
@@ -37,13 +37,13 @@ LCD_CURSOROFF = 0x00
 LCD_BLINKON = 0x01
 LCD_BLINKOFF = 0x00
 
-#flags for display/cursor shift
+# flags for display/cursor shift
 LCD_DISPLAYMOVE = 0x08
 LCD_CURSORMOVE = 0x00
 LCD_MOVERIGHT = 0x04
 LCD_MOVELEFT = 0x00
 
-#flags for function set
+# flags for function set
 LCD_8BITMODE = 0x10
 LCD_4BITMODE = 0x00
 LCD_2LINE = 0x08
@@ -52,96 +52,116 @@ LCD_5x8DOTS = 0x00
 
 
 class RGB1602:
-  def __init__(self, SDA, SCL):
-    self._row = 2
-    self._col = 16
-    self._RGB1602_SDA = SDA
-    self._RGB1602_SCL = SCL
-    self._RGB1602_I2C = I2C(0, sda=self._RGB1602_SDA, scl=self._RGB1602_SCL, freq=400000)
+    def __init__(self, SDA, SCL):
+        self._row = 2
+        self._col = 16
+        self._RGB1602_SDA = SDA
+        self._RGB1602_SCL = SCL
+        self._RGB1602_I2C = I2C(0, sda=self._RGB1602_SDA, scl=self._RGB1602_SCL, freq=400000)
 
-    self._showfunction = LCD_4BITMODE | LCD_1LINE | LCD_5x8DOTS;
-    self.begin(self._row,self._col)
+        self._showfunction = LCD_4BITMODE | LCD_1LINE | LCD_5x8DOTS;
+        self.begin(self._row, self._col)
 
-        
-  def command(self,cmd):
-    self._RGB1602_I2C.writeto_mem(LCD_ADDRESS, 0x80, chr(cmd))
+    def command(self, cmd):
+        self._RGB1602_I2C.writeto_mem(LCD_ADDRESS, 0x80, chr(cmd))
 
-  def write(self,data):
-    self._RGB1602_I2C.writeto_mem(LCD_ADDRESS, 0x40, chr(data))
-    
-  def setReg(self,reg,data):
-    self._RGB1602_I2C.writeto_mem(RGB_ADDRESS, reg, chr(data))
+    def write(self, data):
+        self._RGB1602_I2C.writeto_mem(LCD_ADDRESS, 0x40, chr(data))
 
+    def setReg(self, reg, data):
+        self._RGB1602_I2C.writeto_mem(RGB_ADDRESS, reg, chr(data))
 
-  def setRGB(self,r,g,b):
-    self.setReg(REG_RED,r)
-    self.setReg(REG_GREEN,g)
-    self.setReg(REG_BLUE,b)
+    def setRGB(self, r, g, b):
+        self.setReg(REG_RED, r)
+        self.setReg(REG_GREEN, g)
+        self.setReg(REG_BLUE, b)
 
-  def setCursor(self,col,row):
-    if(row == 0):
-      col|=0x80
-    else:
-      col|=0xc0;
-    self._RGB1602_I2C.writeto(LCD_ADDRESS, bytearray([0x80,col]))
+    def setCursor(self, col, row):
+        if (row == 0):
+            col |= 0x80
+        else:
+            col |= 0xc0;
+        self._RGB1602_I2C.writeto(LCD_ADDRESS, bytearray([0x80, col]))
 
-  def clear(self):
-    self.command(LCD_CLEARDISPLAY)
-    time.sleep(0.002)
-  def printout(self,arg):
-    if(isinstance(arg,int)):
-      arg=str(arg)
+    def clear(self):
+        self.command(LCD_CLEARDISPLAY)
+        time.sleep(0.002)
 
-    for x in bytearray(arg,'utf-8'):
-      self.write(x)
+    def printout(self, arg):
+        if (isinstance(arg, int)):
+            arg = str(arg)
 
+        for x in bytearray(arg, 'utf-8'):
+            self.write(x)
 
-  def display(self):
-    self._showcontrol |= LCD_DISPLAYON 
-    self.command(LCD_DISPLAYCONTROL | self._showcontrol)
+    def display(self):
+        self._showcontrol |= LCD_DISPLAYON
+        self.command(LCD_DISPLAYCONTROL | self._showcontrol)
 
- 
-  def begin(self,cols,lines):
-    if (lines > 1):
-        self._showfunction |= LCD_2LINE 
-     
-    self._numlines = lines 
-    self._currline = 0 
+    def begin(self, cols, lines):
+        if (lines > 1):
+            self._showfunction |= LCD_2LINE
 
-    
-     
-    time.sleep(0.05)
+        self._numlines = lines
+        self._currline = 0
 
+        time.sleep(0.05)
 
-    # Send function set command sequence
-    self.command(LCD_FUNCTIONSET | self._showfunction)
-    #delayMicroseconds(4500);  # wait more than 4.1ms
-    time.sleep(0.005)
-    # second try
-    self.command(LCD_FUNCTIONSET | self._showfunction);
-    #delayMicroseconds(150);
-    time.sleep(0.005)
-    # third go
-    self.command(LCD_FUNCTIONSET | self._showfunction)
-    # finally, set # lines, font size, etc.
-    self.command(LCD_FUNCTIONSET | self._showfunction)
-    # turn the display on with no cursor or blinking default
-    self._showcontrol = LCD_DISPLAYON | LCD_CURSOROFF | LCD_BLINKOFF 
-    self.display()
-    # clear it off
-    self.clear()
-    # Initialize to default text direction (for romance languages)
-    self._showmode = LCD_ENTRYLEFT | LCD_ENTRYSHIFTDECREMENT 
-    # set the entry mode
-    self.command(LCD_ENTRYMODESET | self._showmode);
-    # backlight init
-    self.setReg(REG_MODE1, 0)
-    # set LEDs controllable by both PWM and GRPPWM registers
-    self.setReg(REG_OUTPUT, 0xFF)
-    # set MODE2 values
-    # 0010 0000 -> 0x20  (DMBLNK to 1, ie blinky mode)
-    self.setReg(REG_MODE2, 0x20)
-    self.setColorWhite()
+        # Send function set command sequence
+        self.command(LCD_FUNCTIONSET | self._showfunction)
+        # delayMicroseconds(4500);  # wait more than 4.1ms
+        time.sleep(0.005)
+        # second try
+        self.command(LCD_FUNCTIONSET | self._showfunction);
+        # delayMicroseconds(150);
+        time.sleep(0.005)
+        # third go
+        self.command(LCD_FUNCTIONSET | self._showfunction)
+        # finally, set # lines, font size, etc.
+        self.command(LCD_FUNCTIONSET | self._showfunction)
+        # turn the display on with no cursor or blinking default
+        self._showcontrol = LCD_DISPLAYON | LCD_CURSOROFF | LCD_BLINKOFF
+        self.display()
+        # clear it off
+        self.clear()
+        # Initialize to default text direction (for romance languages)
+        self._showmode = LCD_ENTRYLEFT | LCD_ENTRYSHIFTDECREMENT
+        # set the entry mode
+        self.command(LCD_ENTRYMODESET | self._showmode);
+        # backlight init
+        self.setReg(REG_MODE1, 0)
+        # set LEDs controllable by both PWM and GRPPWM registers
+        self.setReg(REG_OUTPUT, 0xFF)
+        # set MODE2 values
+        # 0010 0000 -> 0x20  (DMBLNK to 1, ie blinky mode)
+        self.setReg(REG_MODE2, 0x20)
+        self.setColorWhite()
 
-  def setColorWhite(self):
-    self.setRGB(255, 255, 255)
+    def setColorWhite(self):
+        self.setRGB(255, 255, 255)
+
+    def animate_rainbow(self, loop_duration_ms: int, elapsed_ms: int):
+        r = 0
+        g = 0
+        b = 0
+        loop_progress = (elapsed_ms % loop_duration_ms) / loop_duration_ms
+        if loop_progress < 1. / 6:
+            r = 255
+            g = 255 * (loop_progress * 6. - 0)
+        elif loop_progress < 2. / 6:
+            g = 255
+            r = 255. - (255. * (loop_progress * 6 - 1))
+        elif loop_progress < 3 / 6:
+            g = 255
+            b = 255 * (loop_progress * 6 - 2)
+        elif loop_progress < 4 / 6:
+            b = 255
+            g = 255 - (255 * (loop_progress * 6 - 3))
+        elif loop_progress < 5 / 6:
+            b = 255
+            r = 255. * (loop_progress * 6 - 4)
+        else:
+            r = 255
+            b = 255 - (255 * (loop_progress * 6 - 5))
+
+        self.setRGB(r, g, b)
