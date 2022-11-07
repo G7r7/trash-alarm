@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 import time
+
+import math
 from machine import Pin, I2C
 
 # Device I2C Arress
@@ -147,21 +149,21 @@ class RGB1602:
         loop_progress = (elapsed_ms % loop_duration_ms) / loop_duration_ms
         if loop_progress < 1. / 6:
             r = 255
-            g = 255 * (loop_progress * 6. - 0)
+            g = math.floor(255 * (loop_progress * 6. - 0))
         elif loop_progress < 2. / 6:
             g = 255
-            r = 255. - (255. * (loop_progress * 6 - 1))
+            r = math.floor(255. - (255. * (loop_progress * 6 - 1)))
         elif loop_progress < 3 / 6:
             g = 255
-            b = 255 * (loop_progress * 6 - 2)
+            b = math.floor(255 * (loop_progress * 6 - 2))
         elif loop_progress < 4 / 6:
             b = 255
-            g = 255 - (255 * (loop_progress * 6 - 3))
+            g = math.floor(255 - (255 * (loop_progress * 6 - 3)))
         elif loop_progress < 5 / 6:
             b = 255
-            r = 255. * (loop_progress * 6 - 4)
+            r = math.floor(255. * (loop_progress * 6 - 4))
         else:
             r = 255
-            b = 255 - (255 * (loop_progress * 6 - 5))
+            b = math.floor(255 - (255 * (loop_progress * 6 - 5)))
 
         self.setRGB(r, g, b)

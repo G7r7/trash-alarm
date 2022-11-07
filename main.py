@@ -19,7 +19,8 @@ if __name__ == '__main__':
 
     while True:
         elapsed_ms = time.ticks_diff(time.ticks_ms(), start)
+        lcd.animate_rainbow(10000, elapsed_ms)
         lcd.clear()
         current_epoch = datetime_utils.rtc_tuple_to_epoch(clock.datetime())
         datetime_utils.write_current_day_and_time(lcd, current_epoch)
-        time.sleep(0.1)
+        time.sleep(1)
