@@ -18,6 +18,6 @@ if __name__ == '__main__':
 
     while True:
         lcd.clear()
-        current_epoch = datetime_utils.rtc_tuple_to_epoch(clock.datetime(), lcd)
+        current_epoch = datetime_utils.rtc_tuple_to_epoch(clock.datetime())
         datetime_utils.write_current_day_and_time(lcd, current_epoch)
         time.sleep(1)

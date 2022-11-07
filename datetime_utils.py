@@ -163,6 +163,6 @@ def write_current_day_and_time(lcd: RGB1602, epoch: int):
     lcd.printout(to_time_string(epoch))
 
 
-def rtc_tuple_to_epoch(rtc_tuple: tuple, lcd: RGB1602) -> int:
+def rtc_tuple_to_epoch(rtc_tuple: tuple) -> int:
     time_tuple = (rtc_tuple[0], rtc_tuple[1], rtc_tuple[2], rtc_tuple[4], rtc_tuple[5], rtc_tuple[6], 0, 0)
     return time.mktime(time_tuple)
