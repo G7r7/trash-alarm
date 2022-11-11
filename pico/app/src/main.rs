@@ -1,17 +1,34 @@
 #![no_std]
 #![no_main]
+#![feature(alloc_error_handler)]
+
+extern crate alloc;
+
+#[global_allocator]
+static ALLOCATOR: CortexMHeap = CortexMHeap::empty();
+
+#[alloc_error_handler]
+fn oom(_: Layout) -> ! {
+    loop {}
+}
 
 // Device I2C Addresses
 const LCD_ADDRESS: u8 = 0x7c >> 1;
 const RGB_ADDRESS: u8 = 0xc0 >> 1;
 
+use alloc::rc::Rc;
+use core::alloc::Layout;
+use core::borrow::BorrowMut;
+use core::cell::RefCell;
+use core::ops::DerefMut;
+use core::panic::PanicInfo;
 use core::u8;
+use alloc_cortex_m::CortexMHeap;
 use arrayvec::ArrayString;
 use cortex_m::delay::Delay;
-use embedded_hal::prelude::_embedded_hal_blocking_spi_Write;
 use embedded_hal::digital::v2::OutputPin;
 
-use datetime::{FormatToArrayString, FromScreenAndButtons};
+use datetime::{FromScreenAndButtons};
 // Ensure we halt the program on panic (if we don't mention this crate it won't
 // be linked)
 use panic_halt as _;
@@ -23,10 +40,9 @@ use lcd::RainbowAnimation;
 use lcd::WriteCurrentDayAndTime;
 use rp_pico::hal::rtc::{DateTime, DayOfWeek, RealTimeClock};
 use rp_pico::hal::Timer;
-use callbacks::{CallbackWriteText, CallbackDoNothing, CallbackBuzzer, StopperButton};
+use callbacks::{CallbackBuzzer, StopperButton};
 use alarm::{Alarm, Triggerable, WeeklyDate};
 use rp_pico::hal::multicore::{Multicore, Stack};
-use rp_pico::pac;
 
 /// Stack for core 1
 ///
@@ -73,58 +89,18 @@ fn blink_led<T: PinId>(led_pin: &mut Pin<T, Output<PushPull>>, ms: u32) -> ! {
     }
 }
 
-
-fn core1_task() -> ! {
-    let mut pac = unsafe { rp_pico::pac::Peripherals::steal() };
-    let core = unsafe { rp_pico::pac::CorePeripherals::steal() };
-
-    // Set up the watchdog driver - needed by the clock setup code
-    let mut watchdog = rp_pico::hal::Watchdog::new(pac.WATCHDOG);
-
-    // Configure the clocks
-    // The default is to generate a 125 MHz system clock
-    let clocks = rp_pico::hal::clocks::init_clocks_and_plls(
-        rp_pico::XOSC_CRYSTAL_FREQ,
-        pac.XOSC,
-        pac.CLOCKS,
-        pac.PLL_SYS,
-        pac.PLL_USB,
-        &mut pac.RESETS,
-        &mut watchdog,
-    )
-        .ok()
-        .unwrap();
-
-    // The single-cycle I/O block controls our GPIO pins
-    let mut sio = rp_pico::hal::Sio::new(pac.SIO);
-    //
-    // // Set the pins up according to their function on this particular board
-    // let pins = rp_pico::Pins::new(
-    //     pac.IO_BANK0,
-    //     pac.PADS_BANK0,
-    //     sio.gpio_bank0,
-    //     &mut pac.RESETS,
-    // );
-    //
-    //
-    // // Set up the delay for the second core.
-    // let mut delay = Delay::new(core.SYST, rp_pico::hal::Clock::freq(&clocks.system_clock).to_Hz());
-    // // Blink the second LED.
-    // loop {
-    //     led_pin.set_high().unwrap();
-    //     delay.delay_ms(500);
-    //     led_pin.set_low().unwrap();
-    //     delay.delay_ms(500);
-    // }
-    loop {
-        let _a = 1 +1 ;
-    }
-}
-
 /// The `#[entry]` macro ensures the Cortex-M start-up code calls this function
 /// as soon as all global variables are initialised.
 #[rp_pico::entry]
 fn main() -> ! {
+    // Initialize the allocator BEFORE you use it
+    {
+        use core::mem::MaybeUninit;
+        const HEAP_SIZE: usize = 1024;
+        static mut HEAP: [MaybeUninit<u8>; HEAP_SIZE] = [MaybeUninit::uninit(); HEAP_SIZE];
+        unsafe { ALLOCATOR.init(HEAP.as_ptr() as usize, HEAP_SIZE) }
+    }
+
     // Grab our singleton objects
     let mut pac = rp_pico::pac::Peripherals::take().unwrap();
     let core = rp_pico::pac::CorePeripherals::take().unwrap();
@@ -164,13 +140,12 @@ fn main() -> ! {
         &mut pac.RESETS,
     );
 
-    // Screen
 
-    // Configure two pins as being I²C, not GPIO
+    // Pins -------------------------------------------------------------------------------------------------------
+    let mut increment_button = pins.gpio16.into_pull_up_input();
+    let mut validate_button = pins.gpio17.into_pull_up_input();
     let sda_pin = pins.gpio0.into_mode::<rp_pico::hal::gpio::FunctionI2C>();
     let scl_pin = pins.gpio1.into_mode::<rp_pico::hal::gpio::FunctionI2C>();
-    let mut buzzer_pin = pins.gpio15.into_push_pull_output();
-
     // Create the I²C driver, using the two pre-configured pins. This will fail
     // at compile time if the pins are in the wrong mode, or if this I²C
     // peripheral isn't available on these pins!
@@ -182,14 +157,14 @@ fn main() -> ! {
         &mut pac.RESETS,
         &clocks.peripheral_clock,
     );
-
     let mut lcd = lcd_1602_i2c::Lcd::new(i2c, LCD_ADDRESS, RGB_ADDRESS, &mut delay).unwrap();
+    let buzzer_pin = pins.gpio15.into_push_pull_output();
+    let mut led_pin = pins.led.into_push_pull_output();
+
+
+    // Ask for datetime ---------------------------------------------------------------------------------
     lcd.clear(&mut delay).unwrap();
     lcd.set_rgb(128, 128, 128).unwrap();
-    // Ask for datetime
-    let mut increment_button = pins.gpio16.into_pull_up_input();
-    let mut validate_button = pins.gpio17.into_pull_up_input();
-
     let date_time = DateTime::from_screen_and_buttons(
         &mut lcd,
         &mut delay,
@@ -203,15 +178,7 @@ fn main() -> ! {
 
     let mut timer = Timer::new(pac.TIMER, &mut pac.RESETS);
     let arraystr_description = ArrayString::<16>::from("caca").unwrap();
-
-    // Blink the LED at 1 Hz
-
     let mut alarm_triggered = false;
-
-    let mut is_triggered = false;
-
-    let mut led_pin = pins.led.into_push_pull_output();
-
 
     // Start up the second core to blink the second LED
     let mut mc = Multicore::new(&mut pac.PSM, &mut pac.PPB, &mut sio.fifo);
@@ -222,28 +189,31 @@ fn main() -> ! {
             blink_led(&mut led_pin, 500);
         });
 
-    loop {
-        {
-            let ref_lcd = &mut lcd;
-            ref_lcd.animate_rainbow(10000, &mut timer);
-            let time = real_time_clock.now().unwrap();
-            ref_lcd.write_current_day_and_time(time);
-        }
-        {
-            let callback = CallbackBuzzer::new(&mut buzzer_pin,1000, 3,
-                                               &mut delay, StopperButton::new(&mut validate_button) );
-            //let callback = CallbackDoNothing::new();
-            let mut alarm = Alarm::new(WeeklyDate::new(DayOfWeek::Monday, 0, 0, 5), arraystr_description, 5, 0, 0, callback);
-            let time = real_time_clock.now().unwrap();
-            if !alarm_triggered {
-                alarm_triggered = alarm.trigger(time);
-            }
-        }
-        {
-            delay.delay_ms(20);
-            lcd.clear(&mut delay).unwrap();
-        }
+    // Smart Pointers ----------------------------------------------------
+    let mut rc_delay = Rc::new(RefCell::new(delay));
 
+    // Callbacks ---------------------------------------------------------
+    let stopper = StopperButton::new(validate_button);
+    let callback = CallbackBuzzer::new(
+        buzzer_pin,1000, 3,
+        Rc::clone(&rc_delay), stopper
+    );
+
+    // Alarms ---------------------------------------------------------------
+    let mut alarm = Alarm::new(
+        WeeklyDate::new(DayOfWeek::Monday, 0, 0, 5),
+        arraystr_description, 5, 0, 0, callback
+    );
+
+
+    loop {
+        lcd.animate_rainbow(10000, &mut timer);
+        lcd.write_current_day_and_time(real_time_clock.now().unwrap());
+        if !alarm_triggered {
+            alarm_triggered = alarm.trigger(real_time_clock.now().unwrap());
+        }
+        (*rc_delay).borrow_mut().delay_ms(20);
+        lcd.clear((*rc_delay).borrow_mut().deref_mut()).unwrap();
     }
 }
 

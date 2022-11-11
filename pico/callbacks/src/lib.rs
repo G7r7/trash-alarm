@@ -1,5 +1,10 @@
 #![no_std]
 
+extern crate alloc;
+
+use alloc::boxed::Box;
+use alloc::rc::Rc;
+use core::cell::{Ref, RefCell};
 use lcd_1602_i2c::Lcd;
 use rp_pico::{
     hal::{
@@ -15,19 +20,19 @@ use cortex_m::delay::Delay;
 use rp_pico::hal::gpio::{Output, PushPull};
 use embedded_hal::digital::v2::{InputPin, OutputPin, StatefulOutputPin};
 
-pub struct CallbackWriteText <'a, DP: PinId + BankPinId, CP: PinId + BankPinId>{
+pub struct CallbackWriteText <DP: PinId + BankPinId, CP: PinId + BankPinId>{
     text: ArrayString<16>,
-    lcd: &'a mut Lcd<I2C<I2C0, (Pin<DP, Function<gpio::I2C>>, Pin<CP, Function<gpio::I2C>>)>>,
-    delay: &'a mut Delay
+    lcd: Lcd<I2C<I2C0, (Pin<DP, Function<gpio::I2C>>, Pin<CP, Function<gpio::I2C>>)>>,
+    delay: Delay
 }
 
-impl<'a, DP: PinId + BankPinId, CP: PinId + BankPinId> CallbackWriteText<'a, DP, CP> {
-    pub fn new(text: ArrayString<16>, lcd: &'a mut Lcd<I2C<I2C0, (Pin<DP, Function<gpio::I2C>>, Pin<CP, Function<gpio::I2C>>)>>, delay: &'a mut Delay ) -> CallbackWriteText<'a, DP, CP> {
+impl<DP: PinId + BankPinId, CP: PinId + BankPinId> CallbackWriteText<DP, CP> {
+    pub fn new(text: ArrayString<16>, lcd: Lcd<I2C<I2C0, (Pin<DP, Function<gpio::I2C>>, Pin<CP, Function<gpio::I2C>>)>>, delay: Delay ) -> CallbackWriteText<DP, CP> {
         Self{ text, lcd, delay }
     }
 }
 
-impl <DP: PinId + BankPinId, CP: PinId + BankPinId> CallbackWriteText <'_,DP,CP>{
+impl <DP: PinId + BankPinId, CP: PinId + BankPinId> CallbackWriteText <DP,CP>{
     pub fn text(&self) -> ArrayString<16> {
         self.text
     }
@@ -37,9 +42,9 @@ impl <DP: PinId + BankPinId, CP: PinId + BankPinId> CallbackWriteText <'_,DP,CP>
     }
 }
 
-impl <DP: PinId + BankPinId, CP: PinId + BankPinId> Callback for CallbackWriteText <'_ ,DP,CP>{
+impl <DP: PinId + BankPinId, CP: PinId + BankPinId> Callback for CallbackWriteText <DP,CP>{
     fn call(&mut self) {
-        self.lcd.clear(self.delay).unwrap();
+        self.lcd.clear(&mut self.delay).unwrap();
         self.lcd.set_cursor_position(0,0).unwrap();
         self.lcd.write_str(self.text.as_str()).unwrap();
     }
@@ -59,43 +64,44 @@ impl Callback for CallbackDoNothing{
     }
 }
 
-pub struct CallbackBuzzer <'a, T: PinId, S: Stopper>{
-    buzzer: &'a mut Pin<T, Output<PushPull>>,
+pub struct CallbackBuzzer<T: PinId, S: Stopper> {
+    buzzer: Pin<T, Output<PushPull>>,
     single_buzz_duration_ms: u32,
     repetitions: u32,
-    delay: &'a mut Delay,
+    delay: Rc<RefCell<Delay>>,
     stopper: S
 }
 
-impl<'a, T: PinId, S: Stopper> CallbackBuzzer<'a, T, S> {
-    pub fn new(buzzer: &'a mut Pin<T, Output<PushPull>>, single_buzz_duration_ms: u32, repetitions: u32, delay: &'a mut Delay, stopper: S) -> Self {
+impl<T: PinId, S: Stopper> CallbackBuzzer<T, S> {
+    pub fn new(buzzer: Pin<T, Output<PushPull>>, single_buzz_duration_ms: u32, repetitions: u32, delay: Rc<RefCell<Delay>>, stopper: S) -> Self {
         Self { buzzer, single_buzz_duration_ms, repetitions, delay, stopper }
     }
 }
 
-impl <'a, T: PinId, S: Stopper> Callback for CallbackBuzzer<'a, T, S> {
+impl <T: PinId, S: Stopper> Callback for CallbackBuzzer<T, S> {
     fn call(&mut self) {
         for i in 0..self.repetitions {
+            let mut ref_delay = self.delay.borrow_mut();
             self.buzzer.set_high().unwrap();
-            self.delay.delay_ms(self.single_buzz_duration_ms);
+            (*ref_delay).delay_ms(self.single_buzz_duration_ms);
             self.buzzer.set_low().unwrap();
-            self.delay.delay_ms(500);
+            (*ref_delay).delay_ms(500);
             if self.stopper.should_stop() {break;}
         }
     }
 }
 
-pub struct StopperButton <'a, IP: PinId>{
-    button: &'a mut Pin<IP, Input<PullUp>>,
+pub struct StopperButton <IP: PinId>{
+    button: Pin<IP, Input<PullUp>>,
 }
 
-impl<'a, IP: PinId> StopperButton<'a, IP> {
-    pub fn new(button: &'a mut Pin<IP, Input<PullUp>>) -> Self {
+impl<IP: PinId> StopperButton<IP> {
+    pub fn new(button: Pin<IP, Input<PullUp>>) -> Self {
         Self { button }
     }
 }
 
-impl<'a, T: PinId> Stopper for StopperButton<'a, T>{
+impl<T: PinId> Stopper for StopperButton<T>{
     fn should_stop(&mut self) -> bool {
         self.button.is_low().unwrap()
     }

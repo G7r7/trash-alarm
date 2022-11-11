@@ -23,6 +23,7 @@ datetime = { path = "../datetime" }
 lcd = { path = "../lcd" }
 callbacks = { path = "../callbacks" }
 alarm = { path = "../../alarm" }
+alloc-cortex-m = "0.4.3"
 
 # but you can use any BSP. Uncomment this to use the pro_micro_rp2040 BSP instead
 # sparkfun-pro-micro-rp2040 = "0.3"
