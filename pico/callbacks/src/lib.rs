@@ -4,7 +4,9 @@ extern crate alloc;
 
 use alloc::boxed::Box;
 use alloc::rc::Rc;
+use core::borrow::BorrowMut;
 use core::cell::{Ref, RefCell};
+use core::ops::DerefMut;
 use lcd_1602_i2c::Lcd;
 use rp_pico::{
     hal::{
@@ -22,12 +24,15 @@ use embedded_hal::digital::v2::{InputPin, OutputPin, StatefulOutputPin};
 
 pub struct CallbackWriteText <DP: PinId + BankPinId, CP: PinId + BankPinId>{
     text: ArrayString<16>,
-    lcd: Lcd<I2C<I2C0, (Pin<DP, Function<gpio::I2C>>, Pin<CP, Function<gpio::I2C>>)>>,
-    delay: Delay
+    lcd: Rc<RefCell<Lcd<I2C<I2C0, (Pin<DP, Function<gpio::I2C>>, Pin<CP, Function<gpio::I2C>>)>>>>,
+    delay: Rc<RefCell<Delay>>
 }
 
 impl<DP: PinId + BankPinId, CP: PinId + BankPinId> CallbackWriteText<DP, CP> {
-    pub fn new(text: ArrayString<16>, lcd: Lcd<I2C<I2C0, (Pin<DP, Function<gpio::I2C>>, Pin<CP, Function<gpio::I2C>>)>>, delay: Delay ) -> CallbackWriteText<DP, CP> {
+    pub fn new(text: ArrayString<16>,
+               lcd: Rc<RefCell<Lcd<I2C<I2C0, (Pin<DP, Function<gpio::I2C>>, Pin<CP, Function<gpio::I2C>>)>>>>,
+               delay: Rc<RefCell<Delay>>
+    ) -> Self {
         Self{ text, lcd, delay }
     }
 }
@@ -36,7 +41,6 @@ impl <DP: PinId + BankPinId, CP: PinId + BankPinId> CallbackWriteText <DP,CP>{
     pub fn text(&self) -> ArrayString<16> {
         self.text
     }
-
     pub fn set_text(&mut self, text: ArrayString<16>) {
         self.text = text;
     }
@@ -44,9 +48,9 @@ impl <DP: PinId + BankPinId, CP: PinId + BankPinId> CallbackWriteText <DP,CP>{
 
 impl <DP: PinId + BankPinId, CP: PinId + BankPinId> Callback for CallbackWriteText <DP,CP>{
     fn call(&mut self) {
-        self.lcd.clear(&mut self.delay).unwrap();
-        self.lcd.set_cursor_position(0,0).unwrap();
-        self.lcd.write_str(self.text.as_str()).unwrap();
+        (*self.lcd).borrow_mut().clear((*self.delay).borrow_mut().deref_mut()).unwrap();
+        (*self.lcd).borrow_mut().set_cursor_position(0,0).unwrap();
+        (*self.lcd).borrow_mut().write_str(self.text.as_str()).unwrap();
     }
 }
 
@@ -81,11 +85,11 @@ impl<T: PinId, S: Stopper> CallbackBuzzer<T, S> {
 impl <T: PinId, S: Stopper> Callback for CallbackBuzzer<T, S> {
     fn call(&mut self) {
         for i in 0..self.repetitions {
-            let mut ref_delay = self.delay.borrow_mut();
+            // let mut ref_delay = self.delay.borrow_mut();
             self.buzzer.set_high().unwrap();
-            (*ref_delay).delay_ms(self.single_buzz_duration_ms);
+            (*self.delay).borrow_mut().delay_ms(self.single_buzz_duration_ms);
             self.buzzer.set_low().unwrap();
-            (*ref_delay).delay_ms(500);
+            (*self.delay).borrow_mut().delay_ms(500);
             if self.stopper.should_stop() {break;}
         }
     }
