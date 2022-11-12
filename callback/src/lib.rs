@@ -1,7 +1,8 @@
 #![no_std]
 
 pub trait Callback{
-    fn call(&mut self);
+    // Return false when callback aborted, return true else.
+    fn call(&mut self) -> bool;
 }
 
 pub trait Stopper{

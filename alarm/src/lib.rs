@@ -4,19 +4,20 @@ use arrayvec::ArrayString;
 use rp_pico::hal::rtc::{DayOfWeek, DateTime};
 use callback::Callback;
 
-pub struct Alarm<C, DateFormat>  {
+pub struct Alarm<C, D, DateFormat>  {
     date: DateFormat,
     description: ArrayString<16>,
     total_duration_sec: u32,
     intense_duration_sec: u32,
     pause_duration_sec: u32,
-    action: C,
+    callback: C,
+    deactivation_callback: D,
     is_active: bool
 }
 
-impl<C, DateFormat> Alarm<C, DateFormat> {
-    pub fn new(date: DateFormat, description: ArrayString<16>, total_duration_sec: u32, intense_duration_sec: u32, pause_duration_sec: u32, action: C) -> Self {
-        Self { date, description, total_duration_sec, intense_duration_sec, pause_duration_sec, action: action, is_active: true }
+impl<C, D, DateFormat> Alarm<C,D, DateFormat> {
+    pub fn new(date: DateFormat, description: ArrayString<16>, total_duration_sec: u32, intense_duration_sec: u32, pause_duration_sec: u32, action: C, deactivation_callback: D) -> Self {
+        Self { date, description, total_duration_sec, intense_duration_sec, pause_duration_sec, callback: action, deactivation_callback: deactivation_callback, is_active: true }
     }
 }
 
@@ -37,17 +38,20 @@ pub trait Triggerable{
     fn trigger(&mut self, current_time: DateTime) ->bool;
 }
 
-impl <C:Callback>Triggerable for Alarm <C, WeeklyDate> where C:Callback{
+impl <C:Callback, D:Callback>Triggerable for Alarm <C, D, WeeklyDate>{
     fn trigger(&mut self, current_time: DateTime) -> bool{
+        let mut triggered = false;
         if self.is_active && self.is_date_in_activation_period(current_time) {
-            self.action.call();
-            return true;
+            self.is_active = self.callback.call();
+            if !self.is_active {//If callback has been stopped...
+                self.deactivation_callback.call();//...call the deactivation callback.
+            }
+            triggered = true;
         }
-        return false;
-    }
+        return true; }
 }
 
-impl <C:Callback> Alarm <C, WeeklyDate> where C:Callback{
+impl <C:Callback, D:Callback> Alarm <C, D, WeeklyDate>{
     pub fn is_date_in_activation_period(&self, current_datetime: DateTime) -> bool {
         let mut seconds_since_week_start = 0u32;
         seconds_since_week_start += current_datetime.second as u32;

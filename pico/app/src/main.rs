@@ -40,7 +40,7 @@ use lcd::RainbowAnimation;
 use lcd::WriteCurrentDayAndTime;
 use rp_pico::hal::rtc::{DateTime, DayOfWeek, RealTimeClock};
 use rp_pico::hal::Timer;
-use callbacks::{CallbackBuzzer, StopperButton};
+use callbacks::{CallbackBuzzer, CallbackWriteText, StopperButton};
 use alarm::{Alarm, Triggerable, WeeklyDate};
 use rp_pico::hal::multicore::{Multicore, Stack};
 
@@ -178,7 +178,7 @@ fn main() -> ! {
 
     let mut timer = Timer::new(pac.TIMER, &mut pac.RESETS);
     let arraystr_description = ArrayString::<16>::from("caca").unwrap();
-    let mut alarm_triggered = false;
+
 
     // Start up the second core to blink the second LED
     let mut mc = Multicore::new(&mut pac.PSM, &mut pac.PPB, &mut sio.fifo);
@@ -191,29 +191,32 @@ fn main() -> ! {
 
     // Smart Pointers ----------------------------------------------------
     let mut rc_delay = Rc::new(RefCell::new(delay));
+    let mut rc_lcd = Rc::new(RefCell::new(lcd));
 
     // Callbacks ---------------------------------------------------------
     let stopper = StopperButton::new(validate_button);
     let callback = CallbackBuzzer::new(
-        buzzer_pin,1000, 3,
+        buzzer_pin,1000,
         Rc::clone(&rc_delay), stopper
+    );
+
+    let deactivation_callback = CallbackWriteText::new(
+        arraystr_description, Rc::clone(&rc_lcd), Rc::clone(&rc_delay), 3000
     );
 
     // Alarms ---------------------------------------------------------------
     let mut alarm = Alarm::new(
         WeeklyDate::new(DayOfWeek::Monday, 0, 0, 5),
-        arraystr_description, 5, 0, 0, callback
+        arraystr_description, 5, 0, 0, callback, deactivation_callback
     );
 
 
     loop {
-        lcd.animate_rainbow(10000, &mut timer);
-        lcd.write_current_day_and_time(real_time_clock.now().unwrap());
-        if !alarm_triggered {
-            alarm_triggered = alarm.trigger(real_time_clock.now().unwrap());
-        }
+        (*rc_lcd).borrow_mut().animate_rainbow(10000, &mut timer);
+        (*rc_lcd).borrow_mut().write_current_day_and_time(real_time_clock.now().unwrap());
+        alarm.trigger(real_time_clock.now().unwrap());
         (*rc_delay).borrow_mut().delay_ms(20);
-        lcd.clear((*rc_delay).borrow_mut().deref_mut()).unwrap();
+        (*rc_lcd).borrow_mut().clear((*rc_delay).borrow_mut().deref_mut()).unwrap();
     }
 }
 
