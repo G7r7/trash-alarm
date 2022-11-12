@@ -26,7 +26,7 @@ use core::u8;
 use alloc_cortex_m::CortexMHeap;
 use arrayvec::ArrayString;
 use cortex_m::delay::Delay;
-use embedded_hal::digital::v2::OutputPin;
+use embedded_hal::digital::v2::{InputPin, OutputPin};
 
 use datetime::{FromScreenAndButtons};
 // Ensure we halt the program on panic (if we don't mention this crate it won't
@@ -144,6 +144,7 @@ fn main() -> ! {
     // Pins -------------------------------------------------------------------------------------------------------
     let mut increment_button = pins.gpio16.into_pull_up_input();
     let mut validate_button = pins.gpio17.into_pull_up_input();
+    let mut motion_sensor = pins.gpio14.into_pull_up_input();
     let sda_pin = pins.gpio0.into_mode::<rp_pico::hal::gpio::FunctionI2C>();
     let scl_pin = pins.gpio1.into_mode::<rp_pico::hal::gpio::FunctionI2C>();
     // Create the I²C driver, using the two pre-configured pins. This will fail
@@ -201,20 +202,22 @@ fn main() -> ! {
     );
 
     let deactivation_callback = CallbackWriteText::new(
-        arraystr_description, Rc::clone(&rc_lcd), Rc::clone(&rc_delay), 3000
+        ArrayString::<16>::from("ALARME STOPPEE").unwrap(), Rc::clone(&rc_lcd), Rc::clone(&rc_delay), 3000
     );
 
     // Alarms ---------------------------------------------------------------
     let mut alarm = Alarm::new(
         WeeklyDate::new(DayOfWeek::Monday, 0, 0, 5),
-        arraystr_description, 5, 0, 0, callback, deactivation_callback
+        arraystr_description, 60, 0, 0, callback, deactivation_callback
     );
 
 
     loop {
         (*rc_lcd).borrow_mut().animate_rainbow(10000, &mut timer);
         (*rc_lcd).borrow_mut().write_current_day_and_time(real_time_clock.now().unwrap());
-        alarm.trigger(real_time_clock.now().unwrap());
+        if motion_sensor.is_low().unwrap() {
+            alarm.trigger(real_time_clock.now().unwrap());
+        }
         (*rc_delay).borrow_mut().delay_ms(20);
         (*rc_lcd).borrow_mut().clear((*rc_delay).borrow_mut().deref_mut()).unwrap();
     }
