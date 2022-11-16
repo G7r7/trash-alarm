@@ -6,24 +6,8 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  building:
-    name: Building
-    continue-on-error: ${{ matrix.experimental || false }}
-    strategy:
-      matrix:
-        # All generated code should be running on stable now
-        rust: [nightly, stable]
-        include:
-          # Nightly is only for reference and allowed to fail
-          - rust: nightly
-            experimental: true
-        os:
-          # Check compilation works on common OSes
-          # (i.e. no path issues)
-          - ubuntu-latest
-          - macOS-latest
-          - windows-latest
-    runs-on: ${{ matrix.os }}
+  testing:
+    name: Testing
     steps:
       - uses: actions/checkout@v2
       - uses: actions-rs/toolchain@v1
