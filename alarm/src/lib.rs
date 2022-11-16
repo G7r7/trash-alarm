@@ -48,7 +48,8 @@ impl <C:Callback, D:Callback>Triggerable for Alarm <C, D, WeeklyDate>{
             }
             triggered = true;
         }
-        return true; }
+        return triggered
+    }
 }
 
 impl <C:Callback, D:Callback> Alarm <C, D, WeeklyDate>{
@@ -91,20 +92,23 @@ mod tests {
 
     struct DummyCallback {}
     impl Callback for DummyCallback {
-        fn call(&mut self) {
-            println!("SQUIK :3")
+        fn call(&mut self) -> bool {
+            println!("SQUIK :3");
+            return true
         }
     }
 
     #[test]
     fn simple_in_period_date_check() {
         let callback1 = DummyCallback{};
+        let callback2 = DummyCallback{};
+
         let alarm = Alarm::new(WeeklyDate::new(
             DayOfWeek::Monday,
             0,
             0,
             10), ArrayString::<16>::from("descr").unwrap(), 30, 0, 0,
-            callback1);
+            callback1, callback2);
         let time = DateTime{
             year: 0,
             month: 0,
@@ -121,12 +125,14 @@ mod tests {
     #[test]
     fn simple_not_in_period_date_check() {
         let callback1 = DummyCallback{};
+        let callback2 = DummyCallback{};
+
         let alarm = Alarm::new(WeeklyDate::new(
             DayOfWeek::Monday,
             0,
             0,
             10), ArrayString::<16>::from("descr").unwrap(), 30, 0, 0,
-                               callback1);
+                               callback1, callback2);
         let time = DateTime{
             year: 0,
             month: 0,
@@ -143,12 +149,14 @@ mod tests {
     #[test]
     fn simple_start_of_period() {
         let callback1 = DummyCallback{};
+        let callback2 = DummyCallback{};
+
         let alarm = Alarm::new(WeeklyDate::new(
             DayOfWeek::Monday,
             0,
             0,
             10), ArrayString::<16>::from("descr").unwrap(), 30, 0, 0,
-                               callback1);
+                               callback1, callback2);
         let time = DateTime{
             year: 0,
             month: 0,
@@ -165,12 +173,14 @@ mod tests {
     #[test]
     fn simple_end_of_period() {
         let callback1 = DummyCallback{};
+        let callback2 = DummyCallback{};
+
         let alarm = Alarm::new(WeeklyDate::new(
             DayOfWeek::Monday,
             0,
             0,
             10), ArrayString::<16>::from("descr").unwrap(), 30, 0, 0,
-                               callback1);
+                               callback1, callback2);
         let time = DateTime{
             year: 0,
             month: 0,
@@ -187,12 +197,14 @@ mod tests {
     #[test]
     fn simple_1sec_after_end_of_period() {
         let callback1 = DummyCallback{};
+        let callback2 = DummyCallback{};
+
         let alarm = Alarm::new(WeeklyDate::new(
             DayOfWeek::Monday,
             0,
             0,
             10), ArrayString::<16>::from("descr").unwrap(), 30, 0, 0,
-                               callback1);
+                               callback1, callback2);
         let time = DateTime{
             year: 0,
             month: 0,
@@ -209,12 +221,14 @@ mod tests {
     #[test]
     fn simple_complicated_case() {
         let callback1 = DummyCallback{};
+        let callback2 = DummyCallback{};
+
         let alarm = Alarm::new(WeeklyDate::new(
             DayOfWeek::Sunday,
             23,
             59,
             59), ArrayString::<16>::from("descr").unwrap(), 30, 0, 0,
-                               callback1);
+                               callback1, callback2);
         let time = DateTime{
             year: 0,
             month: 0,
@@ -231,13 +245,14 @@ mod tests {
     #[test]
     fn simple_complicated_case_false() {
         let callback1 = DummyCallback{};
+        let callback2 = DummyCallback{};
 
         let alarm = Alarm::new(WeeklyDate::new(
             DayOfWeek::Sunday,
             23,
             59,
             59), ArrayString::<16>::from("descr").unwrap(), 30, 0, 0,
-                               callback1);
+                               callback1, callback2);
         let time = DateTime{
             year: 0,
             month: 0,
@@ -254,13 +269,14 @@ mod tests {
     #[test]
     fn simple_complicated_case_true_start_limit() {
         let callback1 = DummyCallback{};
+        let callback2 = DummyCallback{};
 
         let alarm = Alarm::new(WeeklyDate::new(
             DayOfWeek::Sunday,
             23,
             59,
             59), ArrayString::<16>::from("descr").unwrap(), 30, 0, 0,
-                               callback1);
+                               callback1, callback2);
         let time = DateTime{
             year: 0,
             month: 0,
@@ -277,13 +293,14 @@ mod tests {
     #[test]
     fn simple_complicated_case_true_end_limit() {
         let callback1 = DummyCallback{};
+        let callback2 = DummyCallback{};
 
         let alarm = Alarm::new(WeeklyDate::new(
             DayOfWeek::Sunday,
             23,
             59,
             59), ArrayString::<16>::from("descr").unwrap(), 30, 0, 0,
-                               callback1);
+                               callback1, callback2);
         let time = DateTime{
             year: 0,
             month: 0,
@@ -300,13 +317,14 @@ mod tests {
     #[test]
     fn simple_complicated_case_false_end_limit() {
         let callback1 = DummyCallback{};
+        let callback2 = DummyCallback{};
 
         let alarm = Alarm::new(WeeklyDate::new(
             DayOfWeek::Sunday,
             23,
             59,
             59), ArrayString::<16>::from("descr").unwrap(), 30, 0, 0,
-                               callback1);
+                               callback1, callback2);
         let time = DateTime{
             year: 0,
             month: 0,
@@ -323,13 +341,14 @@ mod tests {
     #[test]
     fn simple_complicated_case_false_start_limit() {
         let callback1 = DummyCallback{};
+        let callback2 = DummyCallback{};
 
         let alarm = Alarm::new(WeeklyDate::new(
             DayOfWeek::Sunday,
             23,
             59,
             59), ArrayString::<16>::from("descr").unwrap(), 30, 0, 0,
-                               callback1);
+                               callback1, callback2);
         let time = DateTime{
             year: 0,
             month: 0,
@@ -346,13 +365,14 @@ mod tests {
     #[test]
     fn triggr_test_true(){
         let callback1 = DummyCallback{};
+        let callback2 = DummyCallback{};
 
         let mut alarm = Alarm::new(WeeklyDate::new(
             DayOfWeek::Monday,
             0,
             0,
             10), ArrayString::<16>::from("descr").unwrap(), 30, 0, 0,
-                               callback1);
+                               callback1, callback2);
         let time = DateTime{
             year: 0,
             month: 0,
@@ -369,13 +389,14 @@ mod tests {
     #[test]
     fn triggr_test_false(){
         let callback1 = DummyCallback{};
+        let callback2 = DummyCallback{};
 
         let mut alarm = Alarm::new(WeeklyDate::new(
             DayOfWeek::Monday,
             0,
             0,
             10), ArrayString::<16>::from("descr").unwrap(), 30, 0, 0,
-                                   callback1);
+                                   callback1, callback2);
         let time = DateTime{
             year: 0,
             month: 0,
