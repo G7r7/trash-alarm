@@ -1,0 +1,25 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "mount",
+			"type": "shell",
+			"command": "mount",
+			"args": [
+				"/dev/disk/by-label/RPI-RP2",
+				"/mnt/pico"
+			]
+		},
+		{
+			"type": "cargo",
+			"command": "run",
+			"problemMatcher": [
+				"$rustc"
+			],
+			"label": "rust: cargo run",
+			"dependsOn": [
+				"mount"
+			]
+		}
+	]
+}
