@@ -7,8 +7,8 @@ services:
     volumes:
       - ./:/home/trash-alarm
       - /dev:/dev
-    privileged: true
+    privileged: true # To have access to /dev of host machine to mount the pico
     working_dir: /home/trash-alarm
-    command: sudo /usr/bin/supervisord
+    command: sudo /usr/bin/supervisord # Starts the ssh server
     ports:
       - 2222:22

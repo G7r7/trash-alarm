@@ -56,4 +56,8 @@ RUN echo "export CARGO_HOME=${CARGO_HOME}" >> ~/.bashrc
 RUN echo "export PATH=${PATH}" >> ~/.bashrc
 
 # Creating mount directory.
-RUN mkdir /mnt/pico-trash-alarm
+RUN mkdir /mnt/pico
+
+# Rust nighlty
+RUN rustup toolchain install nightly
+RUN rustup target add --toolchain nightly thumbv6m-none-eabi
