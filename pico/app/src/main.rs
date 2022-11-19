@@ -27,7 +27,7 @@ use cortex_m::delay::Delay;
 use critical_section::Mutex;
 use embedded_hal::digital::v2::{InputPin, OutputPin, ToggleableOutputPin};
 use lcd_1602_i2c::Lcd;
-use rp_pico::hal::gpio::bank0::{Gpio0, Gpio1, Gpio13, Gpio14};
+use rp_pico::hal::gpio::bank0::{Gpio0, Gpio1, Gpio13, Gpio14, Gpio28};
 use rp_pico::hal::gpio::{FunctionI2C, PullUpInput, PushPullOutput};
 
 use datetime::FromScreenAndButtons;
@@ -41,7 +41,7 @@ use callbacks::{CallbackBuzzer, CallbackWriteText, StopperButton};
 use fugit::RateExtU32;
 use lcd::RainbowAnimation;
 use lcd::WriteCurrentDayAndTime;
-use rp_pico::hal::gpio::{Interrupt::EdgeLow, Output, Pin, PinId, PushPull};
+use rp_pico::hal::gpio::{Interrupt::{EdgeLow, EdgeHigh, LevelLow, LevelHigh}, Output, Pin, PinId, PushPull};
 use rp_pico::hal::multicore::{Multicore, Stack};
 use rp_pico::hal::rtc::{DateTime, DayOfWeek, RealTimeClock};
 use rp_pico::hal::{Timer, I2C};
@@ -105,7 +105,10 @@ type LedPin = Pin<Gpio13, PushPullOutput>;
 type ButtonPin = Pin<Gpio14, PullUpInput>;
 type LedAndButton = (LedPin, ButtonPin);
 
-static GLOBAL_PINS: Mutex<RefCell<Option<LedAndButton>>> = Mutex::new(RefCell::new(None));
+type PIRPin = Pin<Gpio28, PullUpInput>;
+type LedAndPIR = (LedPin, PIRPin);
+
+static GLOBAL_PINS: Mutex<RefCell<Option<LedAndPIR>>> = Mutex::new(RefCell::new(None));
 
 /// The `#[entry]` macro ensures the Cortex-M start-up code calls this function
 /// as soon as all global variables are initialised.
@@ -159,10 +162,13 @@ fn main() -> ! {
     );
 
     // Interrupt setup
-    let mut motion_sensor: ButtonPin = pins.gpio14.into_mode();
+    //let mut motion_sensor: ButtonPin = pins.gpio14.into_mode();
+    let mut motion_sensor: PIRPin = pins.gpio28.into_mode();
+
     // Trigger on the 'falling edge' of the input pin.
     // This will happen as the button is being pressed
     motion_sensor.set_interrupt_enabled(EdgeLow, true);
+    motion_sensor.set_interrupt_enabled(EdgeHigh, true);
     // Give away our pins by moving them into the `GLOBAL_PINS` variable.
     // We won't need to access them in the main thread again
     motion_sensor.get_drive_strength();
@@ -268,32 +274,37 @@ fn main() -> ! {
 #[interrupt]
 fn IO_IRQ_BANK0() {
     // The `#[interrupt]` attribute covertly converts this to `&'static mut Option<LedAndButton>`
-    static mut LED_AND_BUTTON: Option<LedAndButton> = None;
+    //static mut LED_AND_BUTTON: Option<LedAndButton> = None;
+    static mut LED_AND_PIR: Option<LedAndPIR> = None;
+
 
     // This is one-time lazy initialisation. We steal the variables given to us
     // via `GLOBAL_PINS`.
-    if LED_AND_BUTTON.is_none() {
+    if LED_AND_PIR.is_none() {
         critical_section::with(|cs| {
-            *LED_AND_BUTTON = GLOBAL_PINS.borrow(cs).take();
+            *LED_AND_PIR = GLOBAL_PINS.borrow(cs).take();
         });
     }
 
-    // Need to check if our Option<LedAndButtonPins> contains our pins
-    if let Some(gpios) = LED_AND_BUTTON {
+    // Need to check if our Option<LedAndButton> contains our pins
+    if let Some(gpios) = LED_AND_PIR {
         // borrow led and button by *destructuring* the tuple
         // these will be of type `&mut LedPin` and `&mut ButtonPin`, so we don't have
         // to move them back into the static after we use them
-        let (led, button) = gpios;
+        let (led, pir) = gpios;
         // Check if the interrupt source is from the pushbutton going from high-to-low.
         // Note: this will always be true in this example, as that is the only enabled GPIO interrupt source
-        if button.interrupt_status(EdgeLow) {
+        if pir.interrupt_status(EdgeHigh) {
             // toggle can't fail, but the embedded-hal traits always allow for it
             // we can discard the return value by assigning it to an unnamed variable
-            let _ = led.toggle();
+            let _ = led.set_high();
 
             // Our interrupt doesn't clear itself.
             // Do that now so we don't immediately jump back to this interrupt handler.
-            button.clear_interrupt(EdgeLow);
+            pir.clear_interrupt(EdgeHigh);
+        } else if pir.interrupt_status(EdgeLow) {
+            let _ = led.set_low();
+            pir.clear_interrupt(EdgeLow);
         }
     }
 }
