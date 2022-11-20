@@ -11,6 +11,7 @@ pub mod led;
 
 extern crate alloc;
 
+use alarm::Armable;
 use alloc::rc::Rc;
 use arrayvec::ArrayString;
 use core::cell::RefCell;
@@ -171,10 +172,8 @@ fn main() -> ! {
         (*rc_lcd)
             .borrow_mut()
             .write_current_day_and_time(real_time_clock.now().unwrap());
+        alarm.rearm(real_time_clock.now().unwrap());
         if motion_sensor.is_high().unwrap() {
-            led.set_high().unwrap();
-            (*rc_delay).borrow_mut().delay_ms(100);
-            led.set_low().unwrap();
             alarm.trigger(real_time_clock.now().unwrap());
         }
         (*rc_delay).borrow_mut().delay_ms(20);

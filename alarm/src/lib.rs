@@ -35,7 +35,24 @@ impl WeeklyDate {
 }
 
 pub trait Triggerable{
-    fn trigger(&mut self, current_time: DateTime) ->bool;
+    fn trigger(&mut self, current_time: DateTime) -> bool;
+}
+
+pub trait Armable{
+    // Returns true if the alarm has been rearmed
+    fn rearm(&mut self, current_time: DateTime) -> bool;
+}
+
+impl <C:Callback, D:Callback>Armable for Alarm <C, D, WeeklyDate>{
+    fn rearm(&mut self, current_time: DateTime) -> bool {
+        let mut res = false;
+        let is_in_period = self.is_date_in_activation_period(current_time);
+        if !is_in_period {
+            self.is_active = true;
+            res = true;
+        }
+        return res;
+    }
 }
 
 impl <C:Callback, D:Callback>Triggerable for Alarm <C, D, WeeklyDate>{
@@ -88,7 +105,7 @@ mod tests {
     use arrayvec::ArrayString;
     use rp_pico::hal::rtc::DayOfWeek;
     use callback::Callback;
-    use crate::{Alarm, DateTime, Triggerable, WeeklyDate};
+    use crate::{Alarm, DateTime, Triggerable, WeeklyDate, Armable};
 
     struct DummyCallback {}
     impl Callback for DummyCallback {
@@ -408,5 +425,114 @@ mod tests {
         };
 
         assert_eq!(alarm.trigger(time),false);
+    }
+
+    #[test]
+    fn rearm_before_period(){
+        let callback1 = DummyCallback{};
+        let callback2 = DummyCallback{};
+
+        let mut alarm = Alarm::new(WeeklyDate::new(
+            DayOfWeek::Monday,
+            0,
+            0,
+            10), ArrayString::<16>::from("descr").unwrap(), 30, 0, 0,
+                                   callback1, callback2);
+        let time = DateTime{
+            year: 0,
+            month: 0,
+            day: 0,
+            day_of_week: DayOfWeek::Monday,
+            hour: 0,
+            minute: 0,
+            second: 0
+        };
+
+        let time_bis = DateTime{
+            year: 0,
+            month: 0,
+            day: 0,
+            day_of_week: DayOfWeek::Monday,
+            hour: 0,
+            minute: 0,
+            second: 0
+        };
+
+        alarm.is_active = false;
+        assert_eq!(alarm.rearm(time), true);
+        assert_eq!(alarm.is_active, true);
+        assert_eq!(alarm.trigger(time_bis), false);
+    }
+
+    #[test]
+    fn rearm_during_period(){
+        let callback1 = DummyCallback{};
+        let callback2 = DummyCallback{};
+
+        let mut alarm = Alarm::new(WeeklyDate::new(
+            DayOfWeek::Monday,
+            0,
+            0,
+            10), ArrayString::<16>::from("descr").unwrap(), 30, 0, 0,
+                                   callback1, callback2);
+        let time = DateTime{
+            year: 0,
+            month: 0,
+            day: 0,
+            day_of_week: DayOfWeek::Monday,
+            hour: 0,
+            minute: 0,
+            second: 11
+        };
+
+        let time_bis = DateTime{
+            year: 0,
+            month: 0,
+            day: 0,
+            day_of_week: DayOfWeek::Monday,
+            hour: 0,
+            minute: 0,
+            second: 11
+        }; 
+
+        alarm.is_active = false; // We simulate an abortion
+        assert_eq!(alarm.rearm(time), false);
+        assert_eq!(alarm.trigger(time_bis), false);
+    }
+
+    #[test]
+    fn rearm_after_period(){
+        let callback1 = DummyCallback{};
+        let callback2 = DummyCallback{};
+
+        let mut alarm = Alarm::new(WeeklyDate::new(
+            DayOfWeek::Monday,
+            0,
+            0,
+            10), ArrayString::<16>::from("descr").unwrap(), 30, 0, 0,
+                                   callback1, callback2);
+        let time = DateTime{
+            year: 0,
+            month: 0,
+            day: 0,
+            day_of_week: DayOfWeek::Monday,
+            hour: 0,
+            minute: 1,
+            second: 0
+        };
+
+        let time_bis = DateTime{
+            year: 0,
+            month: 0,
+            day: 0,
+            day_of_week: DayOfWeek::Monday,
+            hour: 0,
+            minute: 1,
+            second: 0
+        }; 
+
+        alarm.is_active = false; // We simulate an abortion
+        assert_eq!(alarm.rearm(time), true); 
+        assert_eq!(alarm.trigger(time_bis), false);
     }
 }
