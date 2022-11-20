@@ -19,6 +19,7 @@ use core::u8;
 use datetime::FromScreenAndButtons;
 use embedded_hal::digital::v2::InputPin;
 use embedded_hal::digital::v2::OutputPin;
+use lcd_1602_i2c::Lcd;
 
 // Ensure we halt the program on panic (if we don't mention this crate it won't
 // be linked)
@@ -34,9 +35,6 @@ use rp_pico::hal::multicore::Multicore;
 use rp_pico::hal::rtc::{DateTime, DayOfWeek, RealTimeClock};
 use rp_pico::hal::Timer;
 
-use globals::MyLcd;
-use globals::MyLcdI2C;
-use globals::PIRPin;
 use globals::ALLOCATOR;
 use globals::CORE1_STACK;
 use globals::LCD_ADDRESS;
@@ -103,7 +101,7 @@ fn main() -> ! {
     // Create the I²C driver, using the two pre-configured pins. This will fail
     // at compile time if the pins are in the wrong mode, or if this I²C
     // peripheral isn't available on these pins!
-    let i2c = MyLcdI2C::i2c0(
+    let i2c = rp_pico::hal::I2C::i2c0(
         pac.I2C0,
         sda_pin,
         scl_pin,
@@ -111,10 +109,10 @@ fn main() -> ! {
         &mut pac.RESETS,
         &clocks.peripheral_clock,
     );
-    let mut lcd = MyLcd::new(i2c, LCD_ADDRESS, RGB_ADDRESS, &mut delay).unwrap();
+    let mut lcd = Lcd::new(i2c, LCD_ADDRESS, RGB_ADDRESS, &mut delay).unwrap();
     let buzzer_pin = pins.gpio15.into_push_pull_output();
     let mut led_pin = pins.led.into_push_pull_output();
-    let motion_sensor: PIRPin = pins.gpio28.into_mode();
+    let motion_sensor = pins.gpio28.into_pull_up_input();
     let mut led = pins.gpio13.into_push_pull_output();
 
     // Ask for datetime ---------------------------------------------------------------------------------
