@@ -2,35 +2,20 @@
 #![no_main]
 #![feature(alloc_error_handler)]
 
+pub mod core_tasks;
+pub mod globals;
+pub mod interrupt;
+
 extern crate alloc;
 
-#[global_allocator]
-static ALLOCATOR: CortexMHeap = CortexMHeap::empty();
-
-#[alloc_error_handler]
-fn oom(_: Layout) -> ! {
-    loop {}
-}
-
-// Device I2C Addresses
-const LCD_ADDRESS: u8 = 0x7c >> 1;
-const RGB_ADDRESS: u8 = 0xc0 >> 1;
-
 use alloc::rc::Rc;
-use alloc_cortex_m::CortexMHeap;
 use arrayvec::ArrayString;
-use core::alloc::Layout;
 use core::cell::RefCell;
 use core::ops::DerefMut;
 use core::u8;
-use cortex_m::delay::Delay;
-use critical_section::Mutex;
-use embedded_hal::digital::v2::{InputPin, OutputPin, ToggleableOutputPin};
-use lcd_1602_i2c::Lcd;
-use rp_pico::hal::gpio::bank0::{Gpio0, Gpio1, Gpio13, Gpio14, Gpio28};
-use rp_pico::hal::gpio::{FunctionI2C, PullUpInput, PushPullOutput};
-
 use datetime::FromScreenAndButtons;
+use globals::RGB_ADDRESS;
+
 // Ensure we halt the program on panic (if we don't mention this crate it won't
 // be linked)
 use panic_halt as _;
@@ -41,74 +26,21 @@ use callbacks::{CallbackBuzzer, CallbackWriteText, StopperButton};
 use fugit::RateExtU32;
 use lcd::RainbowAnimation;
 use lcd::WriteCurrentDayAndTime;
-use rp_pico::hal::gpio::{Interrupt::{EdgeLow, EdgeHigh, LevelLow, LevelHigh}, Output, Pin, PinId, PushPull};
-use rp_pico::hal::multicore::{Multicore, Stack};
+use rp_pico::hal::gpio::Interrupt::{EdgeHigh, EdgeLow};
+use rp_pico::hal::multicore::Multicore;
 use rp_pico::hal::rtc::{DateTime, DayOfWeek, RealTimeClock};
-use rp_pico::hal::{Timer, I2C};
-use rp_pico::pac::{self, interrupt, I2C0};
+use rp_pico::hal::Timer;
+use rp_pico::pac;
 
-/// Stack for core 1
-///
-/// Core 0 gets its stack via the normal route - any memory not used by static
-/// values is reserved for stack and initialised by cortex-m-rt.
-/// To get the same for Core 1, we would need to compile everything seperately
-/// and modify the linker file for both programs, and that's quite annoying.
-/// So instead, core1.spawn takes a [usize] which gets used for the stack.
-/// NOTE: We use the `Stack` struct here to ensure that it has 32-byte
-/// alignment, which allows the stack guard to take up the least amount of
-/// usable RAM.
-static mut CORE1_STACK: Stack<4096> = Stack::new();
+use globals::MyLcd;
+use globals::MyLcdI2C;
+use globals::PIRPin;
+use globals::ALLOCATOR;
+use globals::CORE1_STACK;
+use globals::GLOBAL_PINS;
+use globals::LCD_ADDRESS;
 
-fn blink_led<T: PinId>(led_pin: &mut Pin<T, Output<PushPull>>, ms: u32) -> ! {
-    let mut pac = unsafe { rp_pico::pac::Peripherals::steal() };
-    let core = unsafe { rp_pico::pac::CorePeripherals::steal() };
-
-    // Set up the watchdog driver - needed by the clock setup code
-    let mut watchdog = rp_pico::hal::Watchdog::new(pac.WATCHDOG);
-
-    // Configure the clocks
-    // The default is to generate a 125 MHz system clock
-    let clocks = rp_pico::hal::clocks::init_clocks_and_plls(
-        rp_pico::XOSC_CRYSTAL_FREQ,
-        pac.XOSC,
-        pac.CLOCKS,
-        pac.PLL_SYS,
-        pac.PLL_USB,
-        &mut pac.RESETS,
-        &mut watchdog,
-    )
-    .ok()
-    .unwrap();
-
-    // Set up the delay for the second core.
-    let mut delay = Delay::new(
-        core.SYST,
-        rp_pico::hal::Clock::freq(&clocks.system_clock).to_Hz(),
-    );
-
-    loop {
-        led_pin.set_high().unwrap();
-        led_pin.set_high().unwrap();
-        delay.delay_ms(ms);
-        led_pin.set_low().unwrap();
-        delay.delay_ms(ms);
-    }
-}
-
-type MyLcdDataPin = Pin<Gpio0, FunctionI2C>;
-type MyLcdClockPin = Pin<Gpio1, FunctionI2C>;
-type MyLcdPins = (MyLcdDataPin, MyLcdClockPin);
-type MyLcdI2C = I2C<I2C0, MyLcdPins>;
-type MyLcd = Lcd<MyLcdI2C>;
-
-type LedPin = Pin<Gpio13, PushPullOutput>;
-type ButtonPin = Pin<Gpio14, PullUpInput>;
-type LedAndButton = (LedPin, ButtonPin);
-
-type PIRPin = Pin<Gpio28, PullUpInput>;
-type LedAndPIR = (LedPin, PIRPin);
-
-static GLOBAL_PINS: Mutex<RefCell<Option<LedAndPIR>>> = Mutex::new(RefCell::new(None));
+use core_tasks::blink_led;
 
 /// The `#[entry]` macro ensures the Cortex-M start-up code calls this function
 /// as soon as all global variables are initialised.
@@ -162,17 +94,15 @@ fn main() -> ! {
     );
 
     // Interrupt setup
-    //let mut motion_sensor: ButtonPin = pins.gpio14.into_mode();
-    let mut motion_sensor: PIRPin = pins.gpio28.into_mode();
-
+    let motion_sensor: PIRPin = pins.gpio28.into_mode();
     // Trigger on the 'falling edge' of the input pin.
     // This will happen as the button is being pressed
     motion_sensor.set_interrupt_enabled(EdgeLow, true);
     motion_sensor.set_interrupt_enabled(EdgeHigh, true);
+
     // Give away our pins by moving them into the `GLOBAL_PINS` variable.
     // We won't need to access them in the main thread again
-    motion_sensor.get_drive_strength();
-    let mut led = pins.gpio13.into_push_pull_output();
+    let led = pins.gpio13.into_push_pull_output();
 
     critical_section::with(|cs| {
         GLOBAL_PINS.borrow(cs).replace(Some((led, motion_sensor)));
@@ -224,8 +154,8 @@ fn main() -> ! {
     });
 
     // Smart Pointers ----------------------------------------------------
-    let mut rc_delay = Rc::new(RefCell::new(delay));
-    let mut rc_lcd = Rc::new(RefCell::new(lcd));
+    let rc_delay = Rc::new(RefCell::new(delay));
+    let rc_lcd = Rc::new(RefCell::new(lcd));
 
     // Callbacks ---------------------------------------------------------
     let stopper = StopperButton::new(validate_button);
@@ -268,43 +198,5 @@ fn main() -> ! {
             .borrow_mut()
             .clear((*rc_delay).borrow_mut().deref_mut())
             .unwrap();
-    }
-}
-
-#[interrupt]
-fn IO_IRQ_BANK0() {
-    // The `#[interrupt]` attribute covertly converts this to `&'static mut Option<LedAndButton>`
-    //static mut LED_AND_BUTTON: Option<LedAndButton> = None;
-    static mut LED_AND_PIR: Option<LedAndPIR> = None;
-
-
-    // This is one-time lazy initialisation. We steal the variables given to us
-    // via `GLOBAL_PINS`.
-    if LED_AND_PIR.is_none() {
-        critical_section::with(|cs| {
-            *LED_AND_PIR = GLOBAL_PINS.borrow(cs).take();
-        });
-    }
-
-    // Need to check if our Option<LedAndButton> contains our pins
-    if let Some(gpios) = LED_AND_PIR {
-        // borrow led and button by *destructuring* the tuple
-        // these will be of type `&mut LedPin` and `&mut ButtonPin`, so we don't have
-        // to move them back into the static after we use them
-        let (led, pir) = gpios;
-        // Check if the interrupt source is from the pushbutton going from high-to-low.
-        // Note: this will always be true in this example, as that is the only enabled GPIO interrupt source
-        if pir.interrupt_status(EdgeHigh) {
-            // toggle can't fail, but the embedded-hal traits always allow for it
-            // we can discard the return value by assigning it to an unnamed variable
-            let _ = led.set_high();
-
-            // Our interrupt doesn't clear itself.
-            // Do that now so we don't immediately jump back to this interrupt handler.
-            pir.clear_interrupt(EdgeHigh);
-        } else if pir.interrupt_status(EdgeLow) {
-            let _ = led.set_low();
-            pir.clear_interrupt(EdgeLow);
-        }
     }
 }
