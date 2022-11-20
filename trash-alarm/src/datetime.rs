@@ -1,9 +1,6 @@
-#![no_std]
-
 use arrayvec::ArrayString;
 use core::fmt::Write;
 use cortex_m::delay::Delay;
-// use defmt::write;
 use embedded_hal::digital::v2::InputPin;
 use lcd_1602_i2c::{Blink, Lcd};
 use rp_pico::{

@@ -19,10 +19,8 @@ fugit = "0.3.6"
 lcd_1602_i2c = "0.3.0"
 arrayvec = { version = "0.7.2", features = [], default-features = false }
 
-datetime = { path = "../datetime" }
-lcd = { path = "../lcd" }
-callbacks = { path = "../callbacks" }
-alarm = { path = "../../alarm" }
+callback = { path = "../callback" }
+alarm = { path = "../alarm" }
 alloc-cortex-m = "0.4.3"
 critical-section = "1.1.1"
 

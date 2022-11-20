@@ -1,5 +1,3 @@
-#![no_std]
-
 use cortex_m::delay::Delay;
 use embedded_hal::digital::v2::OutputPin;
 use rp_pico::hal::gpio::{Output, Pin, PinId, PushPull};

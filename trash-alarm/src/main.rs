@@ -2,9 +2,12 @@
 #![no_main]
 #![feature(alloc_error_handler)]
 
+pub mod callbacks;
 pub mod core_tasks;
+pub mod datetime;
 pub mod globals;
-pub mod interrupt;
+pub mod lcd;
+pub mod led;
 
 extern crate alloc;
 
@@ -14,7 +17,8 @@ use core::cell::RefCell;
 use core::ops::DerefMut;
 use core::u8;
 use datetime::FromScreenAndButtons;
-use globals::RGB_ADDRESS;
+use embedded_hal::digital::v2::InputPin;
+use embedded_hal::digital::v2::OutputPin;
 
 // Ensure we halt the program on panic (if we don't mention this crate it won't
 // be linked)
@@ -26,19 +30,17 @@ use callbacks::{CallbackBuzzer, CallbackWriteText, StopperButton};
 use fugit::RateExtU32;
 use lcd::RainbowAnimation;
 use lcd::WriteCurrentDayAndTime;
-use rp_pico::hal::gpio::Interrupt::{EdgeHigh, EdgeLow};
 use rp_pico::hal::multicore::Multicore;
 use rp_pico::hal::rtc::{DateTime, DayOfWeek, RealTimeClock};
 use rp_pico::hal::Timer;
-use rp_pico::pac;
 
 use globals::MyLcd;
 use globals::MyLcdI2C;
 use globals::PIRPin;
 use globals::ALLOCATOR;
 use globals::CORE1_STACK;
-use globals::GLOBAL_PINS;
 use globals::LCD_ADDRESS;
+use globals::RGB_ADDRESS;
 
 use core_tasks::blink_led;
 
@@ -93,21 +95,6 @@ fn main() -> ! {
         &mut pac.RESETS,
     );
 
-    // Interrupt setup
-    let motion_sensor: PIRPin = pins.gpio28.into_mode();
-    // Trigger on the 'falling edge' of the input pin.
-    // This will happen as the button is being pressed
-    motion_sensor.set_interrupt_enabled(EdgeLow, true);
-    motion_sensor.set_interrupt_enabled(EdgeHigh, true);
-
-    // Give away our pins by moving them into the `GLOBAL_PINS` variable.
-    // We won't need to access them in the main thread again
-    let led = pins.gpio13.into_push_pull_output();
-
-    critical_section::with(|cs| {
-        GLOBAL_PINS.borrow(cs).replace(Some((led, motion_sensor)));
-    });
-
     // Pins -------------------------------------------------------------------------------------------------------
     let mut increment_button = pins.gpio16.into_pull_up_input();
     let mut validate_button = pins.gpio17.into_pull_up_input();
@@ -127,6 +114,8 @@ fn main() -> ! {
     let mut lcd = MyLcd::new(i2c, LCD_ADDRESS, RGB_ADDRESS, &mut delay).unwrap();
     let buzzer_pin = pins.gpio15.into_push_pull_output();
     let mut led_pin = pins.led.into_push_pull_output();
+    let motion_sensor: PIRPin = pins.gpio28.into_mode();
+    let mut led = pins.gpio13.into_push_pull_output();
 
     // Ask for datetime ---------------------------------------------------------------------------------
     lcd.clear(&mut delay).unwrap();
@@ -179,20 +168,17 @@ fn main() -> ! {
         deactivation_callback,
     );
 
-    // Unmask the IO_BANK0 IRQ so that the NVIC interrupt controller
-    // will jump to the interrupt function when the interrupt occurs.
-    // We do this last so that the interrupt can't go off while
-    // it is in the middle of being configured
-    unsafe {
-        pac::NVIC::unmask(pac::Interrupt::IO_IRQ_BANK0);
-    }
-
     loop {
         (*rc_lcd).borrow_mut().animate_rainbow(10000, &mut timer);
         (*rc_lcd)
             .borrow_mut()
             .write_current_day_and_time(real_time_clock.now().unwrap());
-        alarm.trigger(real_time_clock.now().unwrap());
+        if motion_sensor.is_high().unwrap() {
+            led.set_high().unwrap();
+            (*rc_delay).borrow_mut().delay_ms(100);
+            led.set_low().unwrap();
+            alarm.trigger(real_time_clock.now().unwrap());
+        }
         (*rc_delay).borrow_mut().delay_ms(20);
         (*rc_lcd)
             .borrow_mut()
