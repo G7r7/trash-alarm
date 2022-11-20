@@ -144,27 +144,48 @@ fn main() -> ! {
     // Smart Pointers ----------------------------------------------------
     let rc_delay = Rc::new(RefCell::new(delay));
     let rc_lcd = Rc::new(RefCell::new(lcd));
-
-    // Callbacks ---------------------------------------------------------
-    let stopper = StopperButton::new(validate_button);
-    let callback = CallbackBuzzer::new(buzzer_pin, 1000, Rc::clone(&rc_delay), stopper);
-
-    let deactivation_callback = CallbackWriteText::new(
-        ArrayString::<16>::from("ALARME STOPPEE").unwrap(),
-        Rc::clone(&rc_lcd),
-        Rc::clone(&rc_delay),
-        3000,
-    );
+    let rc_valid_button = Rc::new(RefCell::new(validate_button));
+    let rc_buzzer = Rc::new(RefCell::new(buzzer_pin));
 
     // Alarms ---------------------------------------------------------------
     let mut alarm = Alarm::new(
         WeeklyDate::new(DayOfWeek::Monday, 0, 0, 5),
         arraystr_description,
-        60,
+        20,
         0,
         0,
-        callback,
-        deactivation_callback,
+        CallbackBuzzer::new(
+            Rc::clone(&rc_buzzer),
+            1000,
+            Rc::clone(&rc_delay),
+            StopperButton::new(Rc::clone(&rc_valid_button)),
+        ),
+        CallbackWriteText::new(
+            ArrayString::<16>::from("ALARME STOPPEE").unwrap(),
+            Rc::clone(&rc_lcd),
+            Rc::clone(&rc_delay),
+            3000,
+        ),
+    );
+
+    let mut alarm2 = Alarm::new(
+        WeeklyDate::new(DayOfWeek::Monday, 0, 1, 0),
+        arraystr_description,
+        20,
+        0,
+        0,
+        CallbackBuzzer::new(
+            Rc::clone(&rc_buzzer),
+            1000,
+            Rc::clone(&rc_delay),
+            StopperButton::new(Rc::clone(&rc_valid_button)),
+        ),
+        CallbackWriteText::new(
+            ArrayString::<16>::from("ALARME STOPPEE").unwrap(),
+            Rc::clone(&rc_lcd),
+            Rc::clone(&rc_delay),
+            3000,
+        ),
     );
 
     loop {
@@ -173,8 +194,10 @@ fn main() -> ! {
             .borrow_mut()
             .write_current_day_and_time(real_time_clock.now().unwrap());
         alarm.rearm(real_time_clock.now().unwrap());
+        alarm2.rearm(real_time_clock.now().unwrap());
         if motion_sensor.is_high().unwrap() {
             alarm.trigger(real_time_clock.now().unwrap());
+            alarm2.trigger(real_time_clock.now().unwrap());
         }
         (*rc_delay).borrow_mut().delay_ms(20);
         (*rc_lcd)

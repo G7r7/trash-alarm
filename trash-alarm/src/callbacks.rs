@@ -82,7 +82,7 @@ impl Callback for CallbackDoNothing {
 }
 
 pub struct CallbackBuzzer<T: PinId, S: Stopper> {
-    buzzer: Pin<T, Output<PushPull>>,
+    buzzer: Rc<RefCell<Pin<T, Output<PushPull>>>>,
     single_buzz_duration_ms: u32,
     delay: Rc<RefCell<Delay>>,
     stopper: S,
@@ -90,7 +90,7 @@ pub struct CallbackBuzzer<T: PinId, S: Stopper> {
 
 impl<T: PinId, S: Stopper> CallbackBuzzer<T, S> {
     pub fn new(
-        buzzer: Pin<T, Output<PushPull>>,
+        buzzer: Rc<RefCell<Pin<T, Output<PushPull>>>>,
         single_buzz_duration_ms: u32,
         delay: Rc<RefCell<Delay>>,
         stopper: S,
@@ -106,11 +106,11 @@ impl<T: PinId, S: Stopper> CallbackBuzzer<T, S> {
 
 impl<T: PinId, S: Stopper> Callback for CallbackBuzzer<T, S> {
     fn call(&mut self) -> bool {
-        self.buzzer.set_high().unwrap();
+        (*self.buzzer).borrow_mut().set_high().unwrap();
         (*self.delay)
             .borrow_mut()
             .delay_ms(self.single_buzz_duration_ms);
-        self.buzzer.set_low().unwrap();
+        (*self.buzzer).borrow_mut().set_low().unwrap();
         (*self.delay).borrow_mut().delay_ms(500);
         if self.stopper.should_stop() {
             return false;
@@ -121,17 +121,17 @@ impl<T: PinId, S: Stopper> Callback for CallbackBuzzer<T, S> {
 }
 
 pub struct StopperButton<IP: PinId> {
-    button: Pin<IP, Input<PullUp>>,
+    button: Rc<RefCell<Pin<IP, Input<PullUp>>>>,
 }
 
 impl<IP: PinId> StopperButton<IP> {
-    pub fn new(button: Pin<IP, Input<PullUp>>) -> Self {
+    pub fn new(button: Rc<RefCell<Pin<IP, Input<PullUp>>>>) -> Self {
         Self { button }
     }
 }
 
 impl<T: PinId> Stopper for StopperButton<T> {
     fn should_stop(&mut self) -> bool {
-        self.button.is_low().unwrap()
+        (*self.button).borrow_mut().is_low().unwrap()
     }
 }
