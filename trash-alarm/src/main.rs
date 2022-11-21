@@ -11,15 +11,15 @@ pub mod led;
 
 extern crate alloc;
 
-use alarm::Armable;
+use alarm::alarm_manager::AlarmManager;
 use alloc::rc::Rc;
+use alloc::vec;
 use arrayvec::ArrayString;
 use core::cell::RefCell;
 use core::ops::DerefMut;
 use core::u8;
 use datetime::FromScreenAndButtons;
 use embedded_hal::digital::v2::InputPin;
-use embedded_hal::digital::v2::OutputPin;
 use lcd_1602_i2c::Lcd;
 
 // Ensure we halt the program on panic (if we don't mention this crate it won't
@@ -27,7 +27,7 @@ use lcd_1602_i2c::Lcd;
 use panic_halt as _;
 
 // Time handling traits:
-use alarm::{Alarm, Triggerable, WeeklyDate};
+use alarm::{Alarm, WeeklyDate};
 use callbacks::{CallbackBuzzer, CallbackWriteText, StopperButton};
 use fugit::RateExtU32;
 use lcd::RainbowAnimation;
@@ -114,7 +114,7 @@ fn main() -> ! {
     let buzzer_pin = pins.gpio15.into_push_pull_output();
     let mut led_pin = pins.led.into_push_pull_output();
     let motion_sensor = pins.gpio28.into_pull_up_input();
-    let mut led = pins.gpio13.into_push_pull_output();
+    let _led = pins.gpio13.into_push_pull_output();
 
     // Ask for datetime ---------------------------------------------------------------------------------
     lcd.clear(&mut delay).unwrap();
@@ -148,7 +148,7 @@ fn main() -> ! {
     let rc_buzzer = Rc::new(RefCell::new(buzzer_pin));
 
     // Alarms ---------------------------------------------------------------
-    let mut alarm = Alarm::new(
+    let alarm = Alarm::new(
         WeeklyDate::new(DayOfWeek::Monday, 0, 0, 5),
         arraystr_description,
         20,
@@ -168,7 +168,7 @@ fn main() -> ! {
         ),
     );
 
-    let mut alarm2 = Alarm::new(
+    let alarm2 = Alarm::new(
         WeeklyDate::new(DayOfWeek::Monday, 0, 1, 0),
         arraystr_description,
         20,
@@ -188,16 +188,16 @@ fn main() -> ! {
         ),
     );
 
+    let mut alarm_manager = AlarmManager::new(vec![alarm, alarm2]);
+
     loop {
         (*rc_lcd).borrow_mut().animate_rainbow(10000, &mut timer);
         (*rc_lcd)
             .borrow_mut()
             .write_current_day_and_time(real_time_clock.now().unwrap());
-        alarm.rearm(real_time_clock.now().unwrap());
-        alarm2.rearm(real_time_clock.now().unwrap());
+        alarm_manager.rearm_all(&real_time_clock.now().unwrap());
         if motion_sensor.is_high().unwrap() {
-            alarm.trigger(real_time_clock.now().unwrap());
-            alarm2.trigger(real_time_clock.now().unwrap());
+            alarm_manager.trigger_all(&real_time_clock.now().unwrap());
         }
         (*rc_delay).borrow_mut().delay_ms(20);
         (*rc_lcd)

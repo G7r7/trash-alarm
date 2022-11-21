@@ -3,6 +3,7 @@
 use arrayvec::ArrayString;
 use rp_pico::hal::rtc::{DayOfWeek, DateTime};
 use callback::Callback;
+pub mod alarm_manager;
 
 pub struct Alarm<C, D, DateFormat>  {
     date: DateFormat,
@@ -35,16 +36,16 @@ impl WeeklyDate {
 }
 
 pub trait Triggerable{
-    fn trigger(&mut self, current_time: DateTime) -> bool;
+    fn trigger(&mut self, current_time: &DateTime) -> bool;
 }
 
 pub trait Armable{
     // Returns true if the alarm has been rearmed
-    fn rearm(&mut self, current_time: DateTime) -> bool;
+    fn rearm(&mut self, current_time: &DateTime) -> bool;
 }
 
 impl <C:Callback, D:Callback>Armable for Alarm <C, D, WeeklyDate>{
-    fn rearm(&mut self, current_time: DateTime) -> bool {
+    fn rearm(&mut self, current_time: &DateTime) -> bool {
         let mut res = false;
         let is_in_period = self.is_date_in_activation_period(current_time);
         if !is_in_period {
@@ -56,7 +57,7 @@ impl <C:Callback, D:Callback>Armable for Alarm <C, D, WeeklyDate>{
 }
 
 impl <C:Callback, D:Callback>Triggerable for Alarm <C, D, WeeklyDate>{
-    fn trigger(&mut self, current_time: DateTime) -> bool{
+    fn trigger(&mut self, current_time: &DateTime) -> bool{
         let mut triggered = false;
         if self.is_active && self.is_date_in_activation_period(current_time) {
             self.is_active = self.callback.call();
@@ -70,7 +71,7 @@ impl <C:Callback, D:Callback>Triggerable for Alarm <C, D, WeeklyDate>{
 }
 
 impl <C:Callback, D:Callback> Alarm <C, D, WeeklyDate>{
-    pub fn is_date_in_activation_period(&self, current_datetime: DateTime) -> bool {
+    pub fn is_date_in_activation_period(&self, current_datetime: &DateTime) -> bool {
         let mut seconds_since_week_start = 0u32;
         seconds_since_week_start += current_datetime.second as u32;
         seconds_since_week_start += current_datetime.minute as u32 * 60;
@@ -135,7 +136,7 @@ mod tests {
             minute: 0,
             second: 20
         };
-        let res = alarm.is_date_in_activation_period(time);
+        let res = alarm.is_date_in_activation_period(&time);
         assert_eq!(res, true);
     }
 
@@ -159,7 +160,7 @@ mod tests {
             minute: 0,
             second: 0
         };
-        let res = alarm.is_date_in_activation_period(time);
+        let res = alarm.is_date_in_activation_period(&time);
         assert_eq!(res, false);
     }
 
@@ -183,7 +184,7 @@ mod tests {
             minute: 0,
             second: 10
         };
-        let res = alarm.is_date_in_activation_period(time);
+        let res = alarm.is_date_in_activation_period(&time);
         assert_eq!(res, true);
     }
 
@@ -207,7 +208,7 @@ mod tests {
             minute: 0,
             second: 40
         };
-        let res = alarm.is_date_in_activation_period(time);
+        let res = alarm.is_date_in_activation_period(&time);
         assert_eq!(res, true);
     }
 
@@ -231,7 +232,7 @@ mod tests {
             minute: 0,
             second: 41
         };
-        let res = alarm.is_date_in_activation_period(time);
+        let res = alarm.is_date_in_activation_period(&time);
         assert_eq!(res, false);
     }
 
@@ -255,7 +256,7 @@ mod tests {
             minute: 0,
             second: 10
         };
-        let res = alarm.is_date_in_activation_period(time);
+        let res = alarm.is_date_in_activation_period(&time);
         assert_eq!(res, true);
     }
 
@@ -279,7 +280,7 @@ mod tests {
             minute: 0,
             second: 41
         };
-        let res = alarm.is_date_in_activation_period(time);
+        let res = alarm.is_date_in_activation_period(&time);
         assert_eq!(res, false);
     }
 
@@ -303,7 +304,7 @@ mod tests {
             minute: 59,
             second: 59
         };
-        let res = alarm.is_date_in_activation_period(time);
+        let res = alarm.is_date_in_activation_period(&time);
         assert_eq!(res, true);
     }
 
@@ -327,7 +328,7 @@ mod tests {
             minute: 0,
             second: 29
         };
-        let res = alarm.is_date_in_activation_period(time);
+        let res = alarm.is_date_in_activation_period(&time);
         assert_eq!(res, true);
     }
 
@@ -351,7 +352,7 @@ mod tests {
             minute: 0,
             second: 30
         };
-        let res = alarm.is_date_in_activation_period(time);
+        let res = alarm.is_date_in_activation_period(&time);
         assert_eq!(res, false);
     }
 
@@ -375,7 +376,7 @@ mod tests {
             minute: 59,
             second: 58
         };
-        let res = alarm.is_date_in_activation_period(time);
+        let res = alarm.is_date_in_activation_period(&time);
         assert_eq!(res, false);
     }
 
@@ -400,7 +401,7 @@ mod tests {
             second: 20
         };
 
-        assert_eq!(alarm.trigger(time),true);
+        assert_eq!(alarm.trigger(&time),true);
     }
 
     #[test]
@@ -424,7 +425,7 @@ mod tests {
             second: 0
         };
 
-        assert_eq!(alarm.trigger(time),false);
+        assert_eq!(alarm.trigger(&time),false);
     }
 
     #[test]
@@ -459,9 +460,9 @@ mod tests {
         };
 
         alarm.is_active = false;
-        assert_eq!(alarm.rearm(time), true);
+        assert_eq!(alarm.rearm(&time), true);
         assert_eq!(alarm.is_active, true);
-        assert_eq!(alarm.trigger(time_bis), false);
+        assert_eq!(alarm.trigger(&time_bis), false);
     }
 
     #[test]
@@ -496,8 +497,8 @@ mod tests {
         }; 
 
         alarm.is_active = false; // We simulate an abortion
-        assert_eq!(alarm.rearm(time), false);
-        assert_eq!(alarm.trigger(time_bis), false);
+        assert_eq!(alarm.rearm(&time), false);
+        assert_eq!(alarm.trigger(&time_bis), false);
     }
 
     #[test]
@@ -532,7 +533,7 @@ mod tests {
         }; 
 
         alarm.is_active = false; // We simulate an abortion
-        assert_eq!(alarm.rearm(time), true); 
-        assert_eq!(alarm.trigger(time_bis), false);
+        assert_eq!(alarm.rearm(&time), true); 
+        assert_eq!(alarm.trigger(&time_bis), false);
     }
 }
