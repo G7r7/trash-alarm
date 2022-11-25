@@ -20,6 +20,7 @@ use core::ops::DerefMut;
 use core::u8;
 use datetime::FromScreenAndButtons;
 use embedded_hal::digital::v2::InputPin;
+use embedded_hal::digital::v2::OutputPin;
 use lcd_1602_i2c::Lcd;
 
 // Ensure we halt the program on panic (if we don't mention this crate it won't
@@ -95,10 +96,13 @@ fn main() -> ! {
     );
 
     // Pins -------------------------------------------------------------------------------------------------------
+    let buzzer_pin = pins.gpio0.into_push_pull_output();
+    let mut led = pins.gpio10.into_push_pull_output();
+    let motion_sensor = pins.gpio11.into_pull_up_input();
+    let sda_pin = pins.gpio12.into_mode::<rp_pico::hal::gpio::FunctionI2C>();
+    let scl_pin = pins.gpio13.into_mode::<rp_pico::hal::gpio::FunctionI2C>();
     let mut increment_button = pins.gpio16.into_pull_up_input();
     let mut validate_button = pins.gpio17.into_pull_up_input();
-    let sda_pin = pins.gpio0.into_mode::<rp_pico::hal::gpio::FunctionI2C>();
-    let scl_pin = pins.gpio1.into_mode::<rp_pico::hal::gpio::FunctionI2C>();
     // Create the I²C driver, using the two pre-configured pins. This will fail
     // at compile time if the pins are in the wrong mode, or if this I²C
     // peripheral isn't available on these pins!
@@ -111,10 +115,7 @@ fn main() -> ! {
         &clocks.peripheral_clock,
     );
     let mut lcd = Lcd::new(i2c, LCD_ADDRESS, RGB_ADDRESS, &mut delay).unwrap();
-    let buzzer_pin = pins.gpio15.into_push_pull_output();
-    let mut led_pin = pins.led.into_push_pull_output();
-    let motion_sensor = pins.gpio28.into_pull_up_input();
-    let _led = pins.gpio13.into_push_pull_output();
+    let mut embedded_led = pins.led.into_push_pull_output();
 
     // Ask for datetime ---------------------------------------------------------------------------------
     lcd.clear(&mut delay).unwrap();
@@ -138,7 +139,7 @@ fn main() -> ! {
     let cores = mc.cores();
     let core1 = &mut cores[1];
     let _test = core1.spawn(unsafe { &mut CORE1_STACK.mem }, move || {
-        blink_led(&mut led_pin, 500);
+        blink_led(&mut embedded_led, 500);
     });
 
     // Smart Pointers ----------------------------------------------------
@@ -197,6 +198,10 @@ fn main() -> ! {
             .write_current_day_and_time(real_time_clock.now().unwrap());
         alarm_manager.rearm_all(&real_time_clock.now().unwrap());
         if motion_sensor.is_high().unwrap() {
+            led.set_high().unwrap();
+            (*rc_delay).borrow_mut().delay_ms(100);
+            led.set_low().unwrap();
+            (*rc_delay).borrow_mut().delay_ms(100);
             alarm_manager.trigger_all(&real_time_clock.now().unwrap());
         }
         (*rc_delay).borrow_mut().delay_ms(20);
