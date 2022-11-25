@@ -150,9 +150,9 @@ fn main() -> ! {
 
     // Alarms ---------------------------------------------------------------
     let alarm = Alarm::new(
-        WeeklyDate::new(DayOfWeek::Monday, 0, 0, 5),
+        WeeklyDate::new(DayOfWeek::Sunday, 8, 0, 0), // Green trash
         arraystr_description,
-        20,
+        50400, // 14 hours of up time
         0,
         0,
         CallbackBuzzer::new(
@@ -170,9 +170,9 @@ fn main() -> ! {
     );
 
     let alarm2 = Alarm::new(
-        WeeklyDate::new(DayOfWeek::Monday, 0, 1, 0),
+        WeeklyDate::new(DayOfWeek::Wednesday, 8, 0, 0), // Yellow trash
         arraystr_description,
-        20,
+        50400, // 14 hours of uptime
         0,
         0,
         CallbackBuzzer::new(
