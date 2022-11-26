@@ -15,6 +15,7 @@ use alarm::alarm_manager::AlarmManager;
 use alloc::rc::Rc;
 use alloc::vec;
 use arrayvec::ArrayString;
+use callbacks::CallbackBuzzerAndWriteText;
 use core::cell::RefCell;
 use core::ops::DerefMut;
 use core::u8;
@@ -29,7 +30,7 @@ use panic_halt as _;
 
 // Time handling traits:
 use alarm::{Alarm, WeeklyDate};
-use callbacks::{CallbackBuzzer, CallbackWriteText, StopperButton};
+use callbacks::{CallbackWriteText, StopperButton};
 use fugit::RateExtU32;
 use lcd::RainbowAnimation;
 use lcd::WriteCurrentDayAndTime;
@@ -150,41 +151,49 @@ fn main() -> ! {
     // Alarms ---------------------------------------------------------------
     let alarm = Alarm::new(
         WeeklyDate::new(DayOfWeek::Sunday, 19, 0, 0), // Green trash
-        ArrayString::<16>::from("Poubelle verte").unwrap(),
+        ArrayString::<16>::from("Poubelle verte !").unwrap(),
         5 * 3600, // 5 hours of uptime
         0,
         0,
-        CallbackBuzzer::new(
-            Rc::clone(&rc_buzzer),
-            1000,
-            Rc::clone(&rc_delay),
-            StopperButton::new(Rc::clone(&rc_valid_button)),
-        ),
-        CallbackWriteText::new(
-            ArrayString::<16>::from("ALARME STOPPEE").unwrap(),
+        CallbackBuzzerAndWriteText::new(
+            ArrayString::<16>::from("Poubelle verte !").unwrap(),
             Rc::clone(&rc_lcd),
             Rc::clone(&rc_delay),
-            3000,
+            3 * 1000,
+            Rc::clone(&rc_buzzer),
+            1 * 1000,
+            StopperButton::new(Rc::clone(&rc_valid_button)),
+            (0, 255, 0),
+        ),
+        CallbackWriteText::new(
+            ArrayString::<16>::from("Merci <3").unwrap(),
+            Rc::clone(&rc_lcd),
+            Rc::clone(&rc_delay),
+            5000,
         ),
     );
 
     let alarm2 = Alarm::new(
         WeeklyDate::new(DayOfWeek::Wednesday, 19, 0, 0), // Yellow trash
-        ArrayString::<16>::from("Poubelle jaune").unwrap(),
+        ArrayString::<16>::from("Poubelle jaune !").unwrap(),
         5 * 3600, // 5 hours of uptime
         0,
         0,
-        CallbackBuzzer::new(
-            Rc::clone(&rc_buzzer),
-            1000,
-            Rc::clone(&rc_delay),
-            StopperButton::new(Rc::clone(&rc_valid_button)),
-        ),
-        CallbackWriteText::new(
-            ArrayString::<16>::from("ALARME STOPPEE").unwrap(),
+        CallbackBuzzerAndWriteText::new(
+            ArrayString::<16>::from("Poubelle jaune !").unwrap(),
             Rc::clone(&rc_lcd),
             Rc::clone(&rc_delay),
-            3000,
+            3 * 1000,
+            Rc::clone(&rc_buzzer),
+            1 * 1000,
+            StopperButton::new(Rc::clone(&rc_valid_button)),
+            (255, 255, 0),
+        ),
+        CallbackWriteText::new(
+            ArrayString::<16>::from("Merci <3").unwrap(),
+            Rc::clone(&rc_lcd),
+            Rc::clone(&rc_delay),
+            5000,
         ),
     );
 

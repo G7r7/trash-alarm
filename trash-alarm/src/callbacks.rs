@@ -135,3 +135,83 @@ impl<T: PinId> Stopper for StopperButton<T> {
         (*self.button).borrow_mut().is_low().unwrap()
     }
 }
+
+pub struct CallbackBuzzerAndWriteText<
+    DP: PinId + BankPinId,
+    CP: PinId + BankPinId,
+    T: PinId,
+    S: Stopper,
+> {
+    text: ArrayString<16>,
+    lcd: Rc<RefCell<Lcd<I2C<I2C0, (Pin<DP, Function<gpio::I2C>>, Pin<CP, Function<gpio::I2C>>)>>>>,
+    delay: Rc<RefCell<Delay>>,
+    text_duration_ms: u32,
+    buzzer: Rc<RefCell<Pin<T, Output<PushPull>>>>,
+    single_buzz_duration_ms: u32,
+    stopper: S,
+    rgb_color: (u8, u8, u8),
+}
+
+impl<DP: PinId + BankPinId, CP: PinId + BankPinId, T: PinId, S: Stopper>
+    CallbackBuzzerAndWriteText<DP, CP, T, S>
+{
+    pub fn new(
+        text: ArrayString<16>,
+        lcd: Rc<
+            RefCell<Lcd<I2C<I2C0, (Pin<DP, Function<gpio::I2C>>, Pin<CP, Function<gpio::I2C>>)>>>,
+        >,
+        delay: Rc<RefCell<Delay>>,
+        text_duration_ms: u32,
+        buzzer: Rc<RefCell<Pin<T, Output<PushPull>>>>,
+        single_buzz_duration_ms: u32,
+        stopper: S,
+        rgb_color: (u8, u8, u8),
+    ) -> Self {
+        Self {
+            text,
+            lcd,
+            delay,
+            text_duration_ms,
+            buzzer,
+            single_buzz_duration_ms,
+            stopper,
+            rgb_color,
+        }
+    }
+}
+
+impl<DP: PinId + BankPinId, CP: PinId + BankPinId, T: PinId, S: Stopper> Callback
+    for CallbackBuzzerAndWriteText<DP, CP, T, S>
+{
+    fn call(&mut self) -> bool {
+        // Clear the LCD
+        (*self.lcd)
+            .borrow_mut()
+            .clear((*self.delay).borrow_mut().deref_mut())
+            .unwrap();
+        // Set the lcd color
+        (*self.lcd)
+            .borrow_mut()
+            .set_rgb(self.rgb_color.0, self.rgb_color.1, self.rgb_color.2)
+            .unwrap();
+        // Set LCD cursor on first position
+        (*self.lcd).borrow_mut().set_cursor_position(0, 0).unwrap();
+        // Write the text
+        (*self.lcd)
+            .borrow_mut()
+            .write_str(self.text.as_str())
+            .unwrap();
+        // Buzz the buzzer
+        (*self.buzzer).borrow_mut().set_high().unwrap();
+        (*self.delay)
+            .borrow_mut()
+            .delay_ms(self.single_buzz_duration_ms);
+        (*self.buzzer).borrow_mut().set_low().unwrap();
+        if self.stopper.should_stop() {
+            return false;
+        }
+        // Wait for the asked duration for the text_display
+        (*self.delay).borrow_mut().delay_ms(self.text_duration_ms);
+        return true;
+    }
+}
