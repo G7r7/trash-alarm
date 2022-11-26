@@ -132,7 +132,6 @@ fn main() -> ! {
         RealTimeClock::new(pac.RTC, clocks.rtc_clock, &mut pac.RESETS, date_time).unwrap();
 
     let mut timer = Timer::new(pac.TIMER, &mut pac.RESETS);
-    let arraystr_description = ArrayString::<16>::from("caca").unwrap();
 
     // Start up the second core to blink the second LED
     let mut mc = Multicore::new(&mut pac.PSM, &mut pac.PPB, &mut sio.fifo);
@@ -150,9 +149,9 @@ fn main() -> ! {
 
     // Alarms ---------------------------------------------------------------
     let alarm = Alarm::new(
-        WeeklyDate::new(DayOfWeek::Sunday, 8, 0, 0), // Green trash
-        arraystr_description,
-        50400, // 14 hours of up time
+        WeeklyDate::new(DayOfWeek::Sunday, 19, 0, 0), // Green trash
+        ArrayString::<16>::from("Poubelle verte").unwrap(),
+        5 * 3600, // 5 hours of uptime
         0,
         0,
         CallbackBuzzer::new(
@@ -170,9 +169,9 @@ fn main() -> ! {
     );
 
     let alarm2 = Alarm::new(
-        WeeklyDate::new(DayOfWeek::Wednesday, 8, 0, 0), // Yellow trash
-        arraystr_description,
-        50400, // 14 hours of uptime
+        WeeklyDate::new(DayOfWeek::Wednesday, 19, 0, 0), // Yellow trash
+        ArrayString::<16>::from("Poubelle jaune").unwrap(),
+        5 * 3600, // 5 hours of uptime
         0,
         0,
         CallbackBuzzer::new(
