@@ -97,13 +97,14 @@ fn main() -> ! {
     );
 
     // Pins -------------------------------------------------------------------------------------------------------
-    let buzzer_pin = pins.gpio0.into_push_pull_output();
-    let mut led = pins.gpio10.into_push_pull_output();
-    let motion_sensor = pins.gpio11.into_pull_up_input();
+    let mut validate_button = pins.gpio1.into_pull_up_input();
+    let mut increment_button = pins.gpio5.into_pull_up_input();
+    let mut led = pins.gpio9.into_push_pull_output();
+    let motion_sensor = pins.gpio16.into_pull_up_input();
+    let buzzer_pin = pins.gpio28.into_push_pull_output();
+
     let sda_pin = pins.gpio12.into_mode::<rp_pico::hal::gpio::FunctionI2C>();
     let scl_pin = pins.gpio13.into_mode::<rp_pico::hal::gpio::FunctionI2C>();
-    let mut increment_button = pins.gpio16.into_pull_up_input();
-    let mut validate_button = pins.gpio17.into_pull_up_input();
     // Create the I²C driver, using the two pre-configured pins. This will fail
     // at compile time if the pins are in the wrong mode, or if this I²C
     // peripheral isn't available on these pins!
@@ -134,13 +135,13 @@ fn main() -> ! {
 
     let mut timer = Timer::new(pac.TIMER, &mut pac.RESETS);
 
-    // Start up the second core to blink the second LED
-    let mut mc = Multicore::new(&mut pac.PSM, &mut pac.PPB, &mut sio.fifo);
-    let cores = mc.cores();
-    let core1 = &mut cores[1];
-    let _test = core1.spawn(unsafe { &mut CORE1_STACK.mem }, move || {
-        blink_led(&mut embedded_led, 500);
-    });
+    // // Start up the second core to blink the second LED
+    // let mut mc = Multicore::new(&mut pac.PSM, &mut pac.PPB, &mut sio.fifo);
+    // let cores = mc.cores();
+    // let core1 = &mut cores[1];
+    // let _test = core1.spawn(unsafe { &mut CORE1_STACK.mem }, move || {
+    //     blink_led(&mut embedded_led, 500);
+    // });
 
     // Smart Pointers ----------------------------------------------------
     let rc_delay = Rc::new(RefCell::new(delay));
@@ -150,9 +151,9 @@ fn main() -> ! {
 
     // Alarms ---------------------------------------------------------------
     let alarm = Alarm::new(
-        WeeklyDate::new(DayOfWeek::Sunday, 19, 0, 0), // Green trash
+        WeeklyDate::new(DayOfWeek::Sunday, 18, 0, 0), // Green trash
         ArrayString::<16>::from("Poubelle verte !").unwrap(),
-        5 * 3600, // 5 hours of uptime
+        6 * 3600, // 6 hours of uptime
         0,
         0,
         CallbackBuzzerAndWriteText::new(
@@ -174,9 +175,9 @@ fn main() -> ! {
     );
 
     let alarm2 = Alarm::new(
-        WeeklyDate::new(DayOfWeek::Wednesday, 19, 0, 0), // Yellow trash
+        WeeklyDate::new(DayOfWeek::Wednesday, 18, 0, 0), // Yellow trash
         ArrayString::<16>::from("Poubelle jaune !").unwrap(),
-        5 * 3600, // 5 hours of uptime
+        6 * 3600, // 6 hours of uptime
         0,
         0,
         CallbackBuzzerAndWriteText::new(
