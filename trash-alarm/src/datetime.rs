@@ -145,11 +145,13 @@ impl FromScreenAndButtons for DateTime {
                     _ => {}
                 }
                 while increment_button.is_low().unwrap() {}
+                delay.delay_ms(500); // We wait to avoid multiple triggers
             }
 
             if validate_button.is_low().unwrap() {
                 let incr_button_phase = button_phase as u8 + 1;
                 button_phase = get_button_phase_from_u8(&incr_button_phase);
+                delay.delay_ms(500); // We wait to avoid multiple triggers
                 while validate_button.is_low().unwrap() {}
             }
 
