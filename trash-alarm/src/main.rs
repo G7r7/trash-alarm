@@ -201,22 +201,28 @@ fn main() -> ! {
     let mut alarm_manager = AlarmManager::new(vec![alarm, alarm2]);
 
     loop {
+        let now = match real_time_clock.now() {
+            Ok(value) => value,
+            Err(_err) => {
+                continue; // We skip a loop
+            }
+        };
         (*rc_lcd).borrow_mut().animate_rainbow(10000, &mut timer);
-        (*rc_lcd)
-            .borrow_mut()
-            .write_current_day_and_time(real_time_clock.now().unwrap());
-        alarm_manager.rearm_all(&real_time_clock.now().unwrap());
-        if motion_sensor.is_high().unwrap() {
-            led.set_high().unwrap();
+        (*rc_lcd).borrow_mut().write_current_day_and_time(&now);
+        alarm_manager.rearm_all(&now);
+        // Trigger if movement is detected
+        if let Some(true) = motion_sensor.is_high().ok() {
+            led.set_high().ok();
             (*rc_delay).borrow_mut().delay_ms(100);
-            led.set_low().unwrap();
+            led.set_low().ok();
             (*rc_delay).borrow_mut().delay_ms(100);
-            alarm_manager.trigger_all(&real_time_clock.now().unwrap());
+            alarm_manager.trigger_all(&now);
         }
         (*rc_delay).borrow_mut().delay_ms(20);
+        // Clear the display
         (*rc_lcd)
             .borrow_mut()
             .clear((*rc_delay).borrow_mut().deref_mut())
-            .unwrap();
+            .ok();
     }
 }

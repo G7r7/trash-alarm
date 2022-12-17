@@ -6,7 +6,7 @@ use rp_pico::pac::I2C0;
 use crate::datetime::FormatToArrayString;
 
 pub trait WriteCurrentDayAndTime {
-    fn write_current_day_and_time(&mut self, time: DateTime);
+    fn write_current_day_and_time(&mut self, time: &DateTime);
 }
 
 pub trait RainbowAnimation {
@@ -16,7 +16,7 @@ pub trait RainbowAnimation {
 impl<DP: PinId + BankPinId, CP: PinId + BankPinId> WriteCurrentDayAndTime
     for lcd_1602_i2c::Lcd<I2C<I2C0, (Pin<DP, Function<gpio::I2C>>, Pin<CP, Function<gpio::I2C>>)>>
 {
-    fn write_current_day_and_time(&mut self, time: DateTime) {
+    fn write_current_day_and_time(&mut self, time: &DateTime) {
         self.set_cursor_position(0, 0).unwrap();
         self.write_str(time.to_day_of_week_arraystring().as_str())
             .unwrap();
